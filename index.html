@@ -1,827 +1,523 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>极简社交</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root { --pk: #FF6699; --pk-bg: #fff0f5; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, sans-serif; background: #fff; color: #0f1419; overflow-x: hidden; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>极简社交</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--pk:#FF6699;--pkb:#fff0f5;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,sans-serif;background:#fff;color:#0f1419;overflow-x:hidden;}
 
-        /* ── auth ── */
-        #auth-screen { position: fixed; inset: 0; background: linear-gradient(145deg,#FF6699,#FFB3CC); display: flex; align-items: center; justify-content: center; z-index: 999; }
-        .auth-card { background: #fff; border-radius: 24px; padding: 28px 22px; width: 88%; max-width: 360px; box-shadow: 0 20px 60px rgba(255,102,153,.25); }
-        .auth-logo { text-align: center; font-size: 26px; font-weight: 900; color: var(--pk); margin-bottom: 20px; letter-spacing: 1px; }
-        .auth-tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
-        .auth-tab { flex: 1; text-align: center; padding: 9px; cursor: pointer; font-weight: bold; color: #bbb; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: .2s; }
-        .auth-tab.on { color: var(--pk); border-bottom-color: var(--pk); }
-        .a-inp { width: 100%; padding: 11px 13px; border: 1.5px solid #eee; border-radius: 10px; font-size: 15px; margin-bottom: 10px; outline: none; transition: border .2s; }
-        .a-inp:focus { border-color: var(--pk); }
-        .a-btn { width: 100%; padding: 12px; background: var(--pk); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 4px; }
-        .a-err { color: #f44; font-size: 13px; margin-bottom: 8px; display: none; }
-        .a-hint { font-size: 12px; color: #aaa; text-align: center; margin-top: 10px; }
+/* auth */
+#auth-screen{position:fixed;inset:0;background:linear-gradient(145deg,#FF6699,#FFB3CC);display:flex;align-items:center;justify-content:center;z-index:999;}
+.acard{background:#fff;border-radius:24px;padding:28px 22px;width:88%;max-width:360px;box-shadow:0 20px 60px rgba(255,102,153,.25);}
+.alogo{text-align:center;font-size:26px;font-weight:900;color:var(--pk);margin-bottom:20px;}
+.atabs{display:flex;border-bottom:2px solid #eee;margin-bottom:20px;}
+.atab{flex:1;text-align:center;padding:9px;cursor:pointer;font-weight:bold;color:#bbb;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.atab.on{color:var(--pk);border-bottom-color:var(--pk);}
+.ai{width:100%;padding:11px 13px;border:1.5px solid #eee;border-radius:10px;font-size:15px;margin-bottom:10px;outline:none;}
+.ai:focus{border-color:var(--pk);}
+.abtn{width:100%;padding:12px;background:var(--pk);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:4px;}
+.aerr{color:#f44;font-size:13px;margin-bottom:8px;display:none;}
+.ahint{font-size:12px;color:#aaa;text-align:center;margin-top:10px;}
 
-        /* ── main app ── */
-        #main-app { display: none; }
-        .app { max-width: 600px; margin: 0 auto; min-height: 100vh; padding-bottom: 60px; border: 1px solid #eee; }
-        .hd { padding: 14px 15px; border-bottom: 1px solid #eee; font-size: 20px; font-weight: 800; position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); z-index: 10; display: flex; align-items: center; justify-content: space-between; }
+/* app shell */
+#main-app{display:none;}
+.app{max-width:600px;margin:0 auto;min-height:100vh;padding-bottom:60px;border:1px solid #eee;}
+.hd{padding:13px 15px;border-bottom:1px solid #eee;font-size:20px;font-weight:800;position:sticky;top:0;background:rgba(255,255,255,.93);backdrop-filter:blur(10px);z-index:10;display:flex;align-items:center;justify-content:space-between;}
 
-        .av { border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff; background-size: cover; background-position: center; }
+/* avatars */
+.av{border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#fff;background-size:cover;background-position:center;}
 
-        .compose { padding: 15px; border-bottom: 1px solid #eee; display: flex; gap: 12px; }
-        .compose-main { flex: 1; min-width: 0; }
-        .c-inp { width: 100%; border: none; outline: none; font-size: 17px; resize: none; min-height: 48px; }
-        .pre-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        .pre-wrap { position: relative; }
-        .pre-thumb { width: 86px; height: 86px; object-fit: cover; border-radius: 10px; display: block; }
-        .pre-del { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,.55); color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; }
-        .c-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+/* compose */
+.compose{padding:15px;border-bottom:1px solid #eee;display:flex;gap:12px;}
+.cm{flex:1;min-width:0;}
+.ci{width:100%;border:none;outline:none;font-size:17px;resize:none;min-height:48px;}
+.pgrid{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.pwrap{position:relative;}
+.pthumb{width:86px;height:86px;object-fit:cover;border-radius:10px;display:block;}
+.pdel{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;}
+.ctool{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
 
-        .post { border-bottom: 1px solid #eee; padding: 15px; display: flex; gap: 12px; transition: background .5s; }
-        .post.hl { background: var(--pk-bg); }
-        .post-body { flex: 1; min-width: 0; }
-        .post-author { font-weight: 800; font-size: 15px; cursor: pointer; display: inline; }
-        .post-author:hover { color: var(--pk); }
-        .post-text { font-size: 15px; line-height: 1.5; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
-        .imgs-1 { margin-top: 10px; } .imgs-1 img { width: 100%; max-height: 360px; object-fit: cover; border-radius: 14px; border: 1px solid #f0f0f0; }
-        .imgs-2,.imgs-3 { display: grid; gap: 3px; margin-top: 10px; border-radius: 14px; overflow: hidden; }
-        .imgs-2 { grid-template-columns: 1fr 1fr; }
-        .imgs-3 { grid-template-columns: 1fr 1fr; }
-        .imgs-3 img:first-child { grid-column: span 2; height: 200px; }
-        .imgs-2 img,.imgs-3 img { width: 100%; height: 180px; object-fit: cover; display: block; }
-        .post-actions { display: flex; justify-content: space-between; margin-top: 12px; color: #536471; }
-        .act { display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 13px; padding: 4px 2px; transition: color .2s; }
-        .act svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
-        .act:hover { color: var(--pk); } .act.liked { color: var(--pk); } .act.del { color: #ddd; } .act.del:hover { color: #f44; }
+/* posts */
+.post{border-bottom:1px solid #eee;padding:15px;display:flex;gap:12px;transition:background .5s;}
+.post.hl{background:var(--pkb);}
+.pb{flex:1;min-width:0;}
+.pauth{font-weight:800;font-size:15px;cursor:pointer;display:inline;}
+.pauth:hover{color:var(--pk);}
+.ptxt{font-size:15px;line-height:1.5;margin-top:4px;white-space:pre-wrap;word-break:break-word;}
+.imgs-1{margin-top:10px;}.imgs-1 img{width:100%;max-height:360px;object-fit:cover;border-radius:14px;border:1px solid #f0f0f0;}
+.imgs-2,.imgs-3{display:grid;gap:3px;margin-top:10px;border-radius:14px;overflow:hidden;}
+.imgs-2{grid-template-columns:1fr 1fr;}
+.imgs-3{grid-template-columns:1fr 1fr;}
+.imgs-3 img:first-child{grid-column:span 2;height:200px;}
+.imgs-2 img,.imgs-3 img{width:100%;height:180px;object-fit:cover;display:block;}
+.pacts{display:flex;justify-content:space-between;margin-top:12px;color:#536471;}
+.act{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;padding:4px 2px;transition:color .2s;}
+.act svg{width:16px;height:16px;fill:currentColor;flex-shrink:0;}
+.act:hover{color:var(--pk);}.act.liked{color:var(--pk);}.act.del{color:#ddd;}.act.del:hover{color:#f44;}
 
-        .profile-box { padding: 20px; text-align: center; border-bottom: 1px solid #eee; }
-        .meta-info { font-size: 14px; color: var(--pk); margin: 12px 0; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
-        .mtag { background: var(--pk-bg); padding: 5px 12px; border-radius: 12px; cursor: pointer; user-select: none; }
-        .mtag:hover { filter: brightness(.95); }
+/* profile */
+.cover-wrap{position:relative;height:180px;}
+.cover-banner{width:100%;height:100%;background:linear-gradient(135deg,#FFD6E7,#FFF0F5);background-size:cover;background-position:50% 50%;cursor:pointer;position:relative;overflow:hidden;}
+.cover-edit-bar{position:absolute;top:8px;right:8px;display:flex;gap:6px;}
+.cbtn{background:rgba(0,0,0,.45);color:#fff;border:none;padding:4px 10px;border-radius:12px;font-size:12px;cursor:pointer;}
+.cover-hint{position:absolute;inset:0;background:rgba(0,0,0,.35);display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;pointer-events:none;}
+.zoom-bar{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:none;background:rgba(0,0,0,.5);padding:6px 12px;border-radius:20px;align-items:center;gap:8px;}
+.zoom-bar input{width:120px;accent-color:var(--pk);}
+.av-over{position:absolute;bottom:-38px;left:50%;transform:translateX(-50%);border:4px solid #fff;border-radius:50%;cursor:pointer;}
+.profile-info{padding:48px 20px 16px;text-align:center;border-bottom:1px solid #eee;}
+.meta-info{font-size:14px;color:var(--pk);margin:12px 0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;}
+.mtag{background:var(--pkb);padding:5px 12px;border-radius:12px;cursor:pointer;user-select:none;}
+.mtag:hover{filter:brightness(.95);}
 
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 1000; align-items: center; justify-content: center; }
-        .menu-box { background: #fff; width: 84%; max-width: 320px; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
-        .menu-hd { padding: 13px 16px; font-weight: bold; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
-        .menu-back { color: var(--pk); cursor: pointer; font-size: 13px; min-width: 40px; }
-        .menu-scroll { max-height: 370px; overflow-y: auto; }
-        .menu-sect { padding: 5px 16px; font-size: 11px; color: #aaa; background: #f9f9f9; }
-        .mi { padding: 13px 16px; text-align: center; border-bottom: 1px solid #f2f2f2; cursor: pointer; font-size: 15px; }
-        .mi:hover { background: var(--pk-bg); } .mi.cancel { color: var(--pk); font-weight: bold; border-bottom: none; }
+/* menus */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:1000;align-items:center;justify-content:center;}
+.mbox{background:#fff;width:84%;max-width:320px;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.mhd{padding:13px 16px;font-weight:bold;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;font-size:15px;}
+.mback{color:var(--pk);cursor:pointer;font-size:13px;min-width:40px;}
+.mscroll{max-height:370px;overflow-y:auto;}
+.msect{padding:5px 16px;font-size:11px;color:#aaa;background:#f9f9f9;}
+.mi{padding:13px 16px;text-align:center;border-bottom:1px solid #f2f2f2;cursor:pointer;font-size:15px;}
+.mi:hover{background:var(--pkb);}.mi.cancel{color:var(--pk);font-weight:bold;border-bottom:none;}
 
-        .bnav { position: fixed; bottom: 0; width: 100%; max-width: 600px; display: flex; background: #fff; border-top: 1px solid #eee; height: 55px; z-index: 10; }
-        .ni { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #c0c8d0; transition: color .2s; position: relative; }
-        .ni.on { color: var(--pk); } .ni svg { width: 26px; height: 26px; fill: currentColor; }
-        .n-dot { position: absolute; top: 8px; right: 20%; width: 8px; height: 8px; background: #f44; border-radius: 50%; display: none; }
+/* bottom nav */
+.bnav{position:fixed;bottom:0;width:100%;max-width:600px;display:flex;background:#fff;border-top:1px solid #eee;height:55px;z-index:10;}
+.ni{flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#c0c8d0;transition:color .2s;position:relative;}
+.ni.on{color:var(--pk);}.ni svg{width:26px;height:26px;fill:currentColor;}
+.ndot{position:absolute;top:8px;right:20%;width:8px;height:8px;background:#f44;border-radius:50%;display:none;}
 
-        .btn-pk { background: var(--pk); color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
-        .btn-ghost { background: #fff; border: 1px solid #ddd; padding: 6px 16px; border-radius: 20px; cursor: pointer; }
-        .btn-blk { width: 100%; background: #111; color: #fff; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; }
-        .ef { width: 100%; padding: 10px; border: 1px solid #eee; border-radius: 8px; font-size: 15px; margin-bottom: 10px; outline: none; }
-        textarea.ef { resize: none; min-height: 70px; }
+/* buttons */
+.btn-pk{background:var(--pk);color:#fff;border:none;padding:8px 18px;border-radius:20px;font-weight:bold;cursor:pointer;}
+.btn-ghost{background:#fff;border:1px solid #ddd;padding:6px 16px;border-radius:20px;cursor:pointer;}
+.btn-blk{width:100%;background:#111;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;}
+.ef{width:100%;padding:10px;border:1px solid #eee;border-radius:8px;font-size:15px;margin-bottom:10px;outline:none;}
+textarea.ef{resize:none;min-height:70px;}
 
-        .badge-host { background: var(--pk); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
+/* comments */
+.cmt-row{display:flex;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #f2f2f2;}
+.cmt-row:last-child{border-bottom:none;}
+.cmt-row.hl{background:var(--pkb);border-radius:8px;padding:8px;}
+.cmt-body{flex:1;min-width:0;}
+.cmt-name{font-weight:bold;font-size:14px;}
+.cmt-reply-to{font-size:12px;color:var(--pk);margin-right:4px;}
+.cmt-txt{font-size:14px;margin-top:3px;}
+.cmt-acts{display:flex;gap:14px;margin-top:6px;font-size:12px;color:#aaa;}
+.cmt-act{cursor:pointer;transition:color .2s;}.cmt-act:hover{color:var(--pk);}
+.cmt-act.liked{color:var(--pk);}
+.badge-host{background:var(--pk);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle;}
+.reply-to-bar{background:var(--pkb);padding:8px 15px;font-size:13px;color:var(--pk);display:none;justify-content:space-between;align-items:center;}
 
-        .view { display: none; } .view.on { display: block; }
-        .empty { padding: 40px; text-align: center; color: #bbb; font-size: 15px; }
+/* views */
+.view{display:none;}.view.on{display:block;}
+.empty{padding:40px;text-align:center;color:#bbb;font-size:15px;}
 
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 200; align-items: flex-end; }
-        .modal-body { background: #fff; width: 100%; max-width: 600px; height: 82vh; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; margin: 0 auto; }
-        .modal-hd { padding: 13px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .modal-compose { display: flex; align-items: flex-end; gap: 10px; padding: 10px 15px; border-top: 1px solid #eee; flex-shrink: 0; }
-        .modal-compose textarea { flex: 1; font-size: 15px; border: none; outline: none; resize: none; min-height: 40px; }
+/* msg subtabs */
+.subtabs{display:flex;border-bottom:1px solid #eee;}
+.stab{flex:1;text-align:center;padding:12px;font-weight:bold;color:#aaa;cursor:pointer;border-bottom:3px solid transparent;}
+.stab.on{color:var(--pk);border-bottom-color:var(--pk);}
 
-        #v-user { display: none; position: fixed; inset: 0; background: #fff; z-index: 150; max-width: 600px; left: 50%; transform: translateX(-50%); overflow-y: auto; padding-bottom: 60px; }
+/* modals */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:200;align-items:flex-end;}
+.mbody{background:#fff;width:100%;max-width:600px;height:82vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;margin:0 auto;}
+.mhdr{padding:13px 15px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.mc{display:flex;align-items:flex-end;gap:10px;padding:10px 15px;border-top:1px solid #eee;flex-shrink:0;}
+.mc textarea{flex:1;font-size:15px;border:none;outline:none;resize:none;min-height:40px;}
 
-        .notif-row { padding: 14px 16px; border-bottom: 1px solid #f2f2f2; display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
-        .notif-row.unread { background: var(--pk-bg); }
-        .notif-row:hover { background: #f9f9f9; }
-        .notif-icon { font-size: 22px; flex-shrink: 0; }
-        .notif-text { font-size: 14px; line-height: 1.5; }
-        .notif-time { font-size: 12px; color: #aaa; margin-top: 2px; }
-    </style>
+/* overlays for user/chat */
+.fullscreen{display:none;position:fixed;inset:0;background:#fff;z-index:150;max-width:600px;left:50%;transform:translateX(-50%);overflow-y:auto;padding-bottom:60px;}
+#v-chat{display:none;position:fixed;inset:0;background:#fff;z-index:160;max-width:600px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;}
+
+/* chat */
+.chat-msg{display:flex;gap:8px;margin-bottom:12px;}
+.chat-msg.mine{flex-direction:row-reverse;}
+.chat-bubble{max-width:70%;padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.5;}
+.chat-msg.mine .chat-bubble{background:var(--pk);color:#fff;border-radius:18px 18px 4px 18px;}
+.chat-msg:not(.mine) .chat-bubble{background:#f2f2f2;border-radius:18px 18px 18px 4px;}
+.chat-img{max-width:200px;border-radius:12px;margin-top:4px;}
+.chat-compose{display:flex;align-items:center;gap:8px;padding:10px 15px;border-top:1px solid #eee;background:#fff;flex-shrink:0;}
+.chat-compose input{flex:1;border:1.5px solid #eee;border-radius:20px;padding:9px 14px;font-size:15px;outline:none;}
+.chat-compose input:focus{border-color:var(--pk);}
+
+/* notif */
+.nrow{padding:14px 16px;border-bottom:1px solid #f2f2f2;display:flex;gap:12px;align-items:flex-start;}
+.nrow.unread{background:var(--pkb);}
+.nrow:hover{background:#f9f9f9;}
+.ntime{font-size:12px;color:#aaa;margin-top:2px;}
+
+/* dm list */
+.dm-row{padding:14px 16px;border-bottom:1px solid #f2f2f2;display:flex;gap:12px;align-items:center;cursor:pointer;}
+.dm-row:hover{background:#f9f9f9;}
+.dm-preview{font-size:13px;color:#888;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:240px;}
+.dm-unread{background:var(--pk);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;margin-left:auto;flex-shrink:0;}
+</style>
 </head>
 <body>
 
-<!-- ── AUTH ── -->
+<!-- AUTH -->
 <div id="auth-screen">
-    <div class="auth-card">
-        <div class="auth-logo">✦ 极简社交</div>
-        <div class="auth-tabs">
-            <div class="auth-tab on" id="tab-login" onclick="showTab('login')">登录</div>
-            <div class="auth-tab" id="tab-reg" onclick="showTab('reg')">注册</div>
-        </div>
-        <div id="form-login">
-            <input id="l-user" class="a-inp" placeholder="用户名">
-            <input id="l-pw" class="a-inp" type="password" placeholder="密码">
-            <div id="l-err" class="a-err"></div>
-            <button class="a-btn" onclick="doLogin()">登录</button>
-        </div>
-        <div id="form-reg" style="display:none">
-            <input id="r-user" class="a-inp" placeholder="用户名（仅限字母、数字、下划线）">
-            <input id="r-name" class="a-inp" placeholder="显示名字（可以是中文昵称）">
-            <input id="r-pw" class="a-inp" type="password" placeholder="密码（至少 6 位）">
-            <input id="r-pw2" class="a-inp" type="password" placeholder="确认密码">
-            <div id="r-err" class="a-err"></div>
-            <button class="a-btn" onclick="doRegister()">注册账号</button>
-            <div class="a-hint">用户名与密码均不可与他人重复</div>
-        </div>
-    </div>
+<div class="acard">
+  <div class="alogo">✦ 极简社交</div>
+  <div class="atabs">
+    <div class="atab on" id="tab-l" onclick="showTab('l')">登录</div>
+    <div class="atab"    id="tab-r" onclick="showTab('r')">注册</div>
+  </div>
+  <div id="form-l">
+    <input id="l-u" class="ai" placeholder="用户名">
+    <input id="l-p" class="ai" type="password" placeholder="密码">
+    <div id="l-e" class="aerr"></div>
+    <button class="abtn" onclick="doLogin()">登录</button>
+  </div>
+  <div id="form-r" style="display:none">
+    <input id="r-u" class="ai" placeholder="用户名（字母/数字/下划线）">
+    <input id="r-n" class="ai" placeholder="显示昵称">
+    <input id="r-p" class="ai" type="password" placeholder="密码（至少6位）">
+    <input id="r-p2" class="ai" type="password" placeholder="确认密码">
+    <div id="r-e" class="aerr"></div>
+    <button class="abtn" onclick="doRegister()">注册账号</button>
+    <div class="ahint">用户名与密码均不可与他人重复</div>
+  </div>
+</div>
 </div>
 
-<!-- ── MAIN APP ── -->
+<!-- MAIN APP -->
 <div id="main-app">
 <div class="app">
-    <div class="hd">
-        <span id="title">首页</span>
-        <span onclick="logout()" style="font-size:13px;color:#bbb;cursor:pointer;">退出</span>
+<div class="hd"><span id="title">首页</span><span onclick="logout()" style="font-size:13px;color:#bbb;cursor:pointer;">退出</span></div>
+
+<!-- 首页 -->
+<div id="v-home" class="view on">
+  <div class="compose">
+    <div class="av" id="cav" style="width:46px;height:46px;font-size:17px;cursor:pointer;" onclick="switchNav('me')"></div>
+    <div class="cm">
+      <textarea id="inp" class="ci" placeholder="有什么新鲜事？"></textarea>
+      <div class="pgrid" id="pgrid"></div>
+      <div class="ctool">
+        <span onclick="document.getElementById('fp').click()" style="cursor:pointer;"><svg style="width:22px;height:22px;fill:#ccc" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
+        <input type="file" id="fp" accept="image/*" multiple hidden onchange="handleFiles(event)">
+        <button class="btn-pk" onclick="publish()">发布</button>
+      </div>
     </div>
+  </div>
+  <div id="list-all"></div>
+</div>
 
-    <!-- 首页 -->
-    <div id="v-home" class="view on">
-        <div class="compose">
-            <div class="av" id="compose-av" style="width:46px;height:46px;font-size:17px;cursor:pointer;" onclick="switchNav('me')"></div>
-            <div class="compose-main">
-                <textarea id="inp-text" class="c-inp" placeholder="有什么新鲜事？"></textarea>
-                <div class="pre-grid" id="pre-grid"></div>
-                <div class="c-tools">
-                    <span onclick="document.getElementById('f-post').click()" style="cursor:pointer;">
-                        <svg style="width:22px;height:22px;fill:#ccc" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                    </span>
-                    <input type="file" id="f-post" accept="image/*" multiple hidden onchange="handleFiles(event)">
-                    <button class="btn-pk" onclick="publish()">发布</button>
-                </div>
-            </div>
-        </div>
-        <div id="list-all"></div>
+<!-- 动态 -->
+<div id="v-follow" class="view"><div id="list-follow"></div></div>
+
+<!-- 通知/私信 -->
+<div id="v-msg" class="view">
+  <div class="subtabs">
+    <div class="stab on" id="stab-notif" onclick="showMsgTab('notif')">通知</div>
+    <div class="stab"    id="stab-dm"    onclick="showMsgTab('dm')">私信</div>
+  </div>
+  <div id="msg-notif"><div id="notif-list"><div class="empty">加载中…</div></div></div>
+  <div id="msg-dm" style="display:none"><div id="dm-list"><div class="empty">加载中…</div></div></div>
+</div>
+
+<!-- 我的 -->
+<div id="v-me" class="view">
+  <div class="cover-wrap" id="cover-wrap">
+    <div class="cover-banner" id="cover-banner">
+      <div class="cover-edit-bar">
+        <button class="cbtn" onclick="document.getElementById('fcov').click();event.stopPropagation()">更换封面</button>
+        <button class="cbtn" id="adj-btn" onclick="toggleAdj(event)" style="display:none">调整</button>
+        <button class="cbtn" id="save-adj-btn" onclick="saveAdj(event)" style="display:none;background:rgba(255,102,153,.8)">保存</button>
+      </div>
+      <div class="cover-hint" id="cover-hint">拖动调整位置</div>
+      <div class="zoom-bar" id="zoom-bar">
+        <span style="font-size:12px;color:#fff">缩放</span>
+        <input type="range" id="zoom-slider" min="100" max="250" value="100" oninput="setZoom(this.value)">
+      </div>
     </div>
-
-    <!-- 动态 -->
-    <div id="v-follow" class="view"><div id="list-follow"></div></div>
-
-    <!-- 通知 -->
-    <div id="v-msg" class="view"><div id="notif-container"><div class="empty">加载中…</div></div></div>
-
-    <!-- 我的 -->
-    <div id="v-me" class="view">
-        <div class="profile-box">
-            <div class="av" id="my-av" style="width:80px;height:80px;font-size:30px;margin:0 auto;cursor:pointer;" onclick="document.getElementById('f-av').click()"></div>
-            <input type="file" id="f-av" accept="image/*" hidden onchange="handleAvatarUpload(event)">
-            <div style="font-size:12px;color:#bbb;margin:5px 0 8px;">点击头像更换</div>
-            <h2 id="p-name" style="margin:4px 0;font-size:20px;"></h2>
-            <div id="p-bio" style="color:#536471;font-size:14px;margin-bottom:8px;"></div>
-            <div class="meta-info">
-                <span class="mtag" onclick="openCityMenu()" id="p-city">📍 点击选城市</span>
-                <span class="mtag" onclick="openConstMenu()" id="p-const">✨ 点击选星座</span>
-                <span class="mtag" onclick="openBdMenu()" id="p-birth">🎂 点击设生日</span>
-            </div>
-            <button class="btn-ghost" onclick="openEditPanel()">编辑资料</button>
-            <div id="edit-panel" style="display:none;text-align:left;background:#f9f9f9;padding:15px;border-radius:12px;margin-top:15px;">
-                <input id="i-name" class="ef" placeholder="昵称">
-                <textarea id="i-bio" class="ef" placeholder="个人简介"></textarea>
-                <button class="btn-blk" onclick="saveProfile()">保存信息</button>
-            </div>
-        </div>
-        <div id="list-mine"></div>
+    <div class="av av-over" id="my-av" style="width:80px;height:80px;font-size:30px;" onclick="document.getElementById('fav').click()"></div>
+  </div>
+  <input type="file" id="fcov" accept="image/*" hidden onchange="handleCoverUpload(event)">
+  <input type="file" id="fav"  accept="image/*" hidden onchange="handleAvUpload(event)">
+  <div class="profile-info">
+    <div style="font-size:12px;color:#bbb;margin-bottom:6px;">点击头像更换</div>
+    <h2 id="p-name" style="font-size:20px;margin-bottom:4px;"></h2>
+    <div id="p-bio" style="color:#536471;font-size:14px;margin-bottom:8px;"></div>
+    <div class="meta-info">
+      <span class="mtag" onclick="openCityMenu()" id="p-city">📍 点击选城市</span>
+      <span class="mtag" onclick="openConstMenu()" id="p-const">✨ 点击选星座</span>
+      <span class="mtag" onclick="openBdMenu()" id="p-birth">🎂 点击设生日</span>
     </div>
-
-    <!-- 底部导航 -->
-    <div class="bnav">
-        <div class="ni on" id="nav-home" onclick="switchNav('home')"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
-        <div class="ni" id="nav-follow" onclick="switchNav('follow')"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
-        <div class="ni" id="nav-msg" onclick="switchNav('msg')">
-            <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
-            <div class="n-dot" id="n-dot"></div>
-        </div>
-        <div class="ni" id="nav-me" onclick="switchNav('me')"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+    <button class="btn-ghost" onclick="openEditPanel()">编辑资料</button>
+    <div id="edit-panel" style="display:none;text-align:left;background:#f9f9f9;padding:15px;border-radius:12px;margin-top:15px;">
+      <input id="i-name" class="ef" placeholder="昵称">
+      <textarea id="i-bio" class="ef" placeholder="个人简介"></textarea>
+      <button class="btn-blk" onclick="saveProfile()">保存信息</button>
     </div>
+  </div>
+  <div id="list-mine"></div>
+</div>
+
+<!-- 底部导航 -->
+<div class="bnav">
+  <div class="ni on" id="nav-home"   onclick="switchNav('home')"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
+  <div class="ni"    id="nav-follow" onclick="switchNav('follow')"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
+  <div class="ni"    id="nav-msg"    onclick="switchNav('msg')"><svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><div class="ndot" id="ndot"></div></div>
+  <div class="ni"    id="nav-me"     onclick="switchNav('me')"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+</div>
 </div><!-- .app -->
 
 <!-- 他人主页 -->
-<div id="v-user">
-    <div class="hd" style="position:sticky;top:0;">
-        <span onclick="closeUserView()" style="cursor:pointer;font-size:14px;color:var(--pk);">← 返回</span>
-        <span id="u-hd-name" style="font-size:17px;"></span>
-        <button id="u-fbtn" class="btn-pk" style="font-size:13px;padding:5px 14px;" onclick="toggleFollow()">关注</button>
+<div id="v-user" class="fullscreen">
+  <div class="hd" style="position:sticky;top:0;">
+    <span onclick="closeUser()" style="cursor:pointer;font-size:14px;color:var(--pk);">← 返回</span>
+    <span id="u-hdn" style="font-size:17px;"></span>
+    <div style="display:flex;gap:8px;">
+      <button id="u-dm-btn" class="btn-ghost" style="font-size:13px;padding:5px 12px;display:none;" onclick="openChat(viewingUid,viewingName)">私信</button>
+      <button id="u-fbtn" class="btn-pk" style="font-size:13px;padding:5px 14px;" onclick="toggleFollow()">关注</button>
     </div>
-    <div class="profile-box">
-        <div class="av" id="u-av" style="width:80px;height:80px;font-size:30px;margin:0 auto;"></div>
-        <h2 id="u-name" style="margin:10px 0 4px;"></h2>
-        <div id="u-bio" style="color:#536471;font-size:14px;margin-bottom:8px;"></div>
-        <div class="meta-info">
-            <span class="mtag" id="u-city"></span>
-            <span class="mtag" id="u-const"></span>
-            <span class="mtag" id="u-birth"></span>
-        </div>
+  </div>
+  <div class="cover-wrap" style="pointer-events:none;">
+    <div class="cover-banner" id="u-cover"></div>
+    <div class="av av-over" id="u-av" style="width:80px;height:80px;font-size:30px;pointer-events:none;"></div>
+  </div>
+  <div class="profile-info">
+    <h2 id="u-name" style="font-size:20px;margin-bottom:4px;"></h2>
+    <div id="u-bio" style="color:#536471;font-size:14px;margin-bottom:8px;"></div>
+    <div class="meta-info">
+      <span class="mtag" id="u-city"></span>
+      <span class="mtag" id="u-const"></span>
+      <span class="mtag" id="u-birth"></span>
     </div>
-    <div id="u-posts"></div>
+  </div>
+  <div id="u-posts"></div>
+</div>
+
+<!-- 私信聊天 -->
+<div id="v-chat" style="flex-direction:column;">
+  <div class="hd" style="position:sticky;top:0;flex-shrink:0;">
+    <span onclick="closeChat()" style="cursor:pointer;font-size:14px;color:var(--pk);">← 返回</span>
+    <span id="chat-title" style="font-size:17px;"></span>
+    <span></span>
+  </div>
+  <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:15px;"></div>
+  <div class="chat-compose" style="flex-shrink:0;">
+    <span onclick="document.getElementById('fchat').click()" style="cursor:pointer;color:#aaa;font-size:22px;">🖼️</span>
+    <input type="file" id="fchat" accept="image/*" hidden onchange="handleChatImg(event)">
+    <input id="chat-inp" placeholder="发消息…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}">
+    <button class="btn-pk" style="padding:8px 16px;" onclick="sendMsg()">发送</button>
+  </div>
 </div>
 
 <!-- 星座 -->
 <div class="overlay" id="menu-const" onclick="closeConst()">
-    <div class="menu-box" onclick="event.stopPropagation()">
-        <div class="menu-hd"><span></span>选择星座<span></span></div>
-        <div class="menu-scroll">
-            <div class="mi" onclick="pickConst('白羊座')">♈ 白羊座</div><div class="mi" onclick="pickConst('金牛座')">♉ 金牛座</div>
-            <div class="mi" onclick="pickConst('双子座')">♊ 双子座</div><div class="mi" onclick="pickConst('巨蟹座')">♋ 巨蟹座</div>
-            <div class="mi" onclick="pickConst('狮子座')">♌ 狮子座</div><div class="mi" onclick="pickConst('处女座')">♍ 处女座</div>
-            <div class="mi" onclick="pickConst('天秤座')">♎ 天秤座</div><div class="mi" onclick="pickConst('天蝎座')">♏ 天蝎座</div>
-            <div class="mi" onclick="pickConst('射手座')">♐ 射手座</div><div class="mi" onclick="pickConst('摩羯座')">♑ 摩羯座</div>
-            <div class="mi" onclick="pickConst('水瓶座')">♒ 水瓶座</div><div class="mi" onclick="pickConst('双鱼座')">♓ 双鱼座</div>
-            <div class="mi cancel" onclick="closeConst()">取消</div>
-        </div>
+  <div class="mbox" onclick="event.stopPropagation()">
+    <div class="mhd"><span></span>选择星座<span></span></div>
+    <div class="mscroll">
+      <div class="mi" onclick="pickConst('白羊座')">♈ 白羊座</div><div class="mi" onclick="pickConst('金牛座')">♉ 金牛座</div>
+      <div class="mi" onclick="pickConst('双子座')">♊ 双子座</div><div class="mi" onclick="pickConst('巨蟹座')">♋ 巨蟹座</div>
+      <div class="mi" onclick="pickConst('狮子座')">♌ 狮子座</div><div class="mi" onclick="pickConst('处女座')">♍ 处女座</div>
+      <div class="mi" onclick="pickConst('天秤座')">♎ 天秤座</div><div class="mi" onclick="pickConst('天蝎座')">♏ 天蝎座</div>
+      <div class="mi" onclick="pickConst('射手座')">♐ 射手座</div><div class="mi" onclick="pickConst('摩羯座')">♑ 摩羯座</div>
+      <div class="mi" onclick="pickConst('水瓶座')">♒ 水瓶座</div><div class="mi" onclick="pickConst('双鱼座')">♓ 双鱼座</div>
+      <div class="mi cancel" onclick="closeConst()">取消</div>
     </div>
+  </div>
 </div>
 
 <!-- 城市 -->
 <div class="overlay" id="menu-city" onclick="closeCity()">
-    <div class="menu-box" onclick="event.stopPropagation()">
-        <div class="menu-hd">
-            <span class="menu-back" id="city-back" style="display:none" onclick="showCountries()">← 返回</span>
-            <span id="city-title">选择国家</span><span style="min-width:40px"></span>
-        </div>
-        <div class="menu-scroll" id="city-list"></div>
+  <div class="mbox" onclick="event.stopPropagation()">
+    <div class="mhd">
+      <span class="mback" id="city-back" style="display:none" onclick="showCountries()">← 返回</span>
+      <span id="city-title">选择国家</span><span style="min-width:40px"></span>
     </div>
+    <div class="mscroll" id="city-list"></div>
+  </div>
 </div>
 
 <!-- 生日 -->
 <div class="overlay" id="menu-bd" onclick="closeBd()">
-    <div class="menu-box" onclick="event.stopPropagation()">
-        <div class="menu-hd">
-            <span class="menu-back" id="bd-back" style="display:none" onclick="bdBack()">← 返回</span>
-            <span id="bd-title">选择出生年份</span><span style="min-width:40px"></span>
-        </div>
-        <div class="menu-scroll" id="bd-list"></div>
+  <div class="mbox" onclick="event.stopPropagation()">
+    <div class="mhd">
+      <span class="mback" id="bd-back" style="display:none" onclick="bdBack()">← 返回</span>
+      <span id="bd-title">选择出生年份</span><span style="min-width:40px"></span>
     </div>
+    <div class="mscroll" id="bd-list"></div>
+  </div>
 </div>
 
 <!-- 评论弹窗 -->
 <div class="modal" id="modal-reply">
-    <div class="modal-body">
-        <div class="modal-hd">
-            <span onclick="closeReply()" style="cursor:pointer;color:#888;">取消</span>
-            <strong>评论</strong><span></span>
-        </div>
-        <div id="reply-list" style="flex:1;overflow-y:auto;padding:15px;"></div>
-        <div class="modal-compose">
-            <textarea id="reply-inp" placeholder="说点什么…"></textarea>
-            <button class="btn-pk" onclick="submitReply()">回复</button>
-        </div>
+  <div class="mbody">
+    <div class="mhdr">
+      <span onclick="closeReply()" style="cursor:pointer;color:#888;">取消</span>
+      <strong>评论</strong><span></span>
     </div>
+    <div id="reply-list" style="flex:1;overflow-y:auto;padding:15px;"></div>
+    <div class="reply-to-bar" id="rto-bar">
+      <span>回复 <strong id="rto-name"></strong></span>
+      <span onclick="cancelRto()" style="cursor:pointer;font-size:16px;">✕</span>
+    </div>
+    <div class="mc">
+      <textarea id="reply-inp" placeholder="说点什么…"></textarea>
+      <button class="btn-pk" onclick="submitReply()">回复</button>
+    </div>
+  </div>
 </div>
 
 </div><!-- #main-app -->
 
 <script>
-const SB_URL = 'https://podskdvqrhxvhnwylvsx.supabase.co';
-const SB_KEY = 'sb_publishable_9Kow0JDI_jpqiWm4ne5Zjg_HlDA3wr8';
-const db = supabase.createClient(SB_URL, SB_KEY);
+const SBU='https://podskdvqrhxvhnwylvsx.supabase.co';
+const SBK='sb_publishable_9Kow0JDI_jpqiWm4ne5Zjg_HlDA3wr8';
+const db=supabase.createClient(SBU,SBK);
 
-let session = null;
-let my = {};
-let postImgs = [];
-let likedPosts = new Set();
-let followed = [];
-let curPId = null, curPostAuthorId = null;
-let selCountry = null;
-let bdStep = 'year', bdY = null, bdM = null;
-let viewingUid = null;
+let session=null,my={};
+let postImgs=[],likedPosts=new Set(),likedComments=new Set(),followed=[];
+let curPId=null,curPostAuthorId=null,replyingTo=null;
+let selCountry=null,bdStep='year',bdY=null,bdM=null;
+let viewingUid=null,viewingName='';
+let chatUid=null,chatName='',chatImg=null;
+let adjMode=false,dragStart=null,bgStart=null;
 
-// ── auth helpers ──────────────────────────────────────
-async function sha256(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
+// ── auth ─────────────────────────────────────────────
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
+function showTab(t){document.getElementById('form-l').style.display=t==='l'?'block':'none';document.getElementById('form-r').style.display=t==='r'?'block':'none';document.getElementById('tab-l').className='atab'+(t==='l'?' on':'');document.getElementById('tab-r').className='atab'+(t==='r'?' on':'');}
+async function doLogin(){const u=document.getElementById('l-u').value.trim(),p=document.getElementById('l-p').value,e=document.getElementById('l-e');e.style.display='none';if(!u||!p){e.innerText='请填写完整';e.style.display='block';return;}const h=await sha256(p);const{data}=await db.from('profiles').select('*').eq('username',u).eq('password_hash',h).single();if(!data){e.innerText='用户名或密码错误';e.style.display='block';return;}startSession(data);}
+async function doRegister(){const u=document.getElementById('r-u').value.trim(),n=document.getElementById('r-n').value.trim(),p=document.getElementById('r-p').value,p2=document.getElementById('r-p2').value,e=document.getElementById('r-e');e.style.display='none';if(!u||!n||!p||!p2){e.innerText='请填写所有字段';e.style.display='block';return;}if(!/^[a-zA-Z0-9_]+$/.test(u)){e.innerText='用户名仅限字母数字下划线';e.style.display='block';return;}if(p.length<6){e.innerText='密码至少6位';e.style.display='block';return;}if(p!==p2){e.innerText='两次密码不一致';e.style.display='block';return;}const{data:ex1}=await db.from('profiles').select('id').eq('id',u).maybeSingle();const{data:ex2}=await db.from('profiles').select('id').eq('username',u).maybeSingle();if(ex1||ex2){e.innerText='用户名已被使用';e.style.display='block';return;}const h=await sha256(p);const{data,error}=await db.from('profiles').insert([{id:u,username:u,name:n,password_hash:h,bio:'',region:'',constellation:'',birthday:'',avatar_url:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100}]).select().single();if(error){e.innerText='注册失败：'+error.message;e.style.display='block';return;}startSession(data);}
+function startSession(p){session=p;localStorage.setItem('session',JSON.stringify(p));launchApp();}
+function logout(){session=null;localStorage.removeItem('session');document.getElementById('main-app').style.display='none';document.getElementById('auth-screen').style.display='flex';postImgs=[];likedPosts=new Set();likedComments=new Set();followed=[];}
+function launchApp(){my={...session};likedPosts=new Set(JSON.parse(localStorage.getItem('lp_'+my.id)||'[]'));likedComments=new Set(JSON.parse(localStorage.getItem('lc_'+my.id)||'[]'));followed=JSON.parse(localStorage.getItem('fol_'+my.id)||'[]');document.getElementById('auth-screen').style.display='none';document.getElementById('main-app').style.display='block';init();}
 
-function showTab(t) {
-    document.getElementById('form-login').style.display = t==='login'?'block':'none';
-    document.getElementById('form-reg').style.display  = t==='reg'?'block':'none';
-    document.getElementById('tab-login').className = 'auth-tab'+(t==='login'?' on':'');
-    document.getElementById('tab-reg').className  = 'auth-tab'+(t==='reg'?' on':'');
-}
+// ── init ─────────────────────────────────────────────
+async function init(){renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);await maybeSeedHanako();await loadFeed('all');checkNdot();const sp=new URLSearchParams(location.search);const pid=sp.get('post');const cid=sp.get('comment');if(pid){await loadFeed('all');const el=document.getElementById('post-'+pid);if(el){el.classList.add('hl');setTimeout(()=>el.classList.remove('hl'),2000);el.scrollIntoView({behavior:'smooth'});}if(cid){openReply(Number(pid),'');setTimeout(()=>{const cel=document.getElementById('c-'+cid);if(cel){cel.classList.add('hl');setTimeout(()=>cel.classList.remove('hl'),2000);cel.scrollIntoView({behavior:'smooth'});}},600);}}}
+async function maybeSeedHanako(){const{data}=await db.from('profiles').select('id').eq('id','user-hanako').maybeSingle();if(data)return;await db.from('profiles').upsert([{id:'user-hanako',name:'花子',bio:'来自东京的插画师 🎨',region:'日本 · 东京',constellation:'双鱼座',birthday:'1999-03-20'}]);await db.from('posts').insert([{author_id:'user-hanako',author_name:'花子',content:'大家好！我是花子，请多关照～ 🌸',likes:8},{author_id:'user-hanako',author_name:'花子',content:'东京今天樱花全开了🌸 你们那里呢？',likes:23},{author_id:'user-hanako',author_name:'花子',content:'咖啡☕ + 下雨天🌧️ + 耳机🎧 = 完美',likes:31}]);}
 
-async function doLogin() {
-    const username = document.getElementById('l-user').value.trim();
-    const pw       = document.getElementById('l-pw').value;
-    const err      = document.getElementById('l-err');
-    err.style.display = 'none';
-    if (!username || !pw) { err.innerText='请填写完整'; err.style.display='block'; return; }
-    const hash = await sha256(pw);
-    const { data } = await db.from('profiles').select('*').eq('username', username).eq('password_hash', hash).single();
-    if (!data) { err.innerText='用户名或密码错误'; err.style.display='block'; return; }
-    startSession(data);
-}
+// ── helpers ───────────────────────────────────────────
+const AVC=['#FF6699','#FF9944','#44BBFF','#55CC88','#AA88FF','#FF6644'];
+function avc(s){return AVC[(s||'?').charCodeAt(0)%AVC.length];}
+function applyAv(el,name,url,size){if(!el)return;if(url){el.style.cssText=`width:${size}px;height:${size}px;background-image:url('${url}');background-size:cover;background-position:center;font-size:0;`;el.innerText='';}else{el.style.cssText=`width:${size}px;height:${size}px;background:${avc(name)};font-size:${Math.round(size*.38)}px;`;el.innerText=(name||'?')[0];}}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtBd(bd){if(!bd)return'点击设生日';const[y,m,d]=bd.split('-').map(Number);return`${y}年${m}月${d}日`;}
+function fmtTime(ts){if(!ts)return'';const d=Date.now()-new Date(ts);if(d<60000)return'刚刚';if(d<3600000)return Math.floor(d/60000)+'分钟前';if(d<86400000)return Math.floor(d/3600000)+'小时前';const dt=new Date(ts);return`${dt.getMonth()+1}/${dt.getDate()}`;}
+function compress(file,px=1000,q=.78){return new Promise(res=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);const s=Math.min(1,px/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);res(cv.toDataURL('image/jpeg',q));};img.src=url;});}
 
-async function doRegister() {
-    const username = document.getElementById('r-user').value.trim();
-    const name     = document.getElementById('r-name').value.trim();
-    const pw       = document.getElementById('r-pw').value;
-    const pw2      = document.getElementById('r-pw2').value;
-    const err      = document.getElementById('r-err');
-    err.style.display = 'none';
-    if (!username || !name || !pw || !pw2) { err.innerText='请填写所有字段'; err.style.display='block'; return; }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) { err.innerText='用户名仅限英文字母、数字和下划线'; err.style.display='block'; return; }
-    if (pw.length < 6) { err.innerText='密码至少 6 位'; err.style.display='block'; return; }
-    if (pw !== pw2) { err.innerText='两次密码不一致'; err.style.display='block'; return; }
-    // check uniqueness
-    const { data: ex1 } = await db.from('profiles').select('id').eq('id', username).maybeSingle();
-    const { data: ex2 } = await db.from('profiles').select('id').eq('username', username).maybeSingle();
-    if (ex1 || ex2) { err.innerText='该用户名已被使用，请换一个'; err.style.display='block'; return; }
-    const hash = await sha256(pw);
-    const { data, error } = await db.from('profiles').insert([{
-        id: username, username, name, password_hash: hash,
-        bio:'', region:'', constellation:'', birthday:'', avatar_url:''
-    }]).select().single();
-    if (error) { err.innerText='注册失败：'+error.message; err.style.display='block'; return; }
-    startSession(data);
-}
+// ── cover photo ───────────────────────────────────────
+function renderCoverBanner(el,url,pos,zoom){if(url){el.style.backgroundImage=`url('${url}')`;el.style.backgroundSize=`${zoom||100}%`;el.style.backgroundPosition=pos||'50% 50%';}else{el.style.backgroundImage='';}}
+async function handleCoverUpload(e){const f=e.target.files[0];if(!f)return;const b64=await compress(f,1200,.8);await db.from('profiles').update({cover_url:b64,cover_pos:'50% 50%',cover_zoom:100}).eq('id',my.id);my.cover_url=b64;my.cover_pos='50% 50%';my.cover_zoom=100;session.cover_url=b64;localStorage.setItem('session',JSON.stringify(session));renderMe();document.getElementById('adj-btn').style.display='block';}
 
-function startSession(profile) {
-    session = profile;
-    localStorage.setItem('session', JSON.stringify(profile));
-    launchApp();
-}
+// cover adjust (drag + zoom)
+function toggleAdj(e){e.stopPropagation();adjMode=!adjMode;const hint=document.getElementById('cover-hint');const zbar=document.getElementById('zoom-bar');const sbtn=document.getElementById('save-adj-btn');hint.style.display=adjMode?'flex':'none';zbar.style.display=adjMode?'flex':'none';sbtn.style.display=adjMode?'block':'none';const banner=document.getElementById('cover-banner');banner.style.cursor=adjMode?'grab':'default';if(adjMode){document.getElementById('zoom-slider').value=my.cover_zoom||100;}}
+function setZoom(v){const b=document.getElementById('cover-banner');b.style.backgroundSize=v+'%';my.cover_zoom=Number(v);}
+function getBgPos(){const pos=(document.getElementById('cover-banner').style.backgroundPosition||'50% 50%').split(' ');return{x:parseFloat(pos[0])||50,y:parseFloat(pos[1])||50};}
+async function saveAdj(e){e.stopPropagation();const pos=document.getElementById('cover-banner').style.backgroundPosition;const zoom=my.cover_zoom||100;await db.from('profiles').update({cover_pos:pos,cover_zoom:zoom}).eq('id',my.id);my.cover_pos=pos;session.cover_pos=pos;session.cover_zoom=zoom;localStorage.setItem('session',JSON.stringify(session));adjMode=false;document.getElementById('cover-hint').style.display='none';document.getElementById('zoom-bar').style.display='none';document.getElementById('save-adj-btn').style.display='none';document.getElementById('cover-banner').style.cursor='default';}
 
-function logout() {
-    session = null;
-    localStorage.removeItem('session');
-    document.getElementById('main-app').style.display = 'none';
-    document.getElementById('auth-screen').style.display = 'flex';
-    postImgs = []; likedPosts = new Set(); followed = [];
-    // reset nav
-    document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));
-    document.getElementById('nav-home').classList.add('on');
-    document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
-    document.getElementById('v-home').classList.add('on');
-}
-
-function launchApp() {
-    my = { ...session };
-    likedPosts = new Set(JSON.parse(localStorage.getItem('liked_'+my.id) || '[]'));
-    followed   = JSON.parse(localStorage.getItem('fol_'+my.id) || '[]');
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'block';
-    init();
-}
-
-// ── app init ──────────────────────────────────────────
-async function init() {
-    renderMyProfile();
-    renderComposeAv();
-    await maybeSeedHanako();
-    await loadFeed('all');
-    checkNotifDot();
-    const pid = new URLSearchParams(location.search).get('post');
-    if (pid) {
-        await new Promise(r => setTimeout(r, 300));
-        const el = document.getElementById('post-'+pid);
-        if (el) { el.classList.add('hl'); setTimeout(()=>el.classList.remove('hl'),2000); el.scrollIntoView({behavior:'smooth'}); }
-    }
-}
-
-async function maybeSeedHanako() {
-    const { data } = await db.from('profiles').select('id').eq('id','user-hanako').maybeSingle();
-    if (data) return;
-    await db.from('profiles').upsert([{ id:'user-hanako', name:'花子', bio:'来自东京的插画师 🎨', region:'日本 · 东京', constellation:'双鱼座', birthday:'1999-03-20' }]);
-    await db.from('posts').insert([
-        { author_id:'user-hanako', author_name:'花子', content:'大家好！我是花子，请多关照～ 🌸', likes:8 },
-        { author_id:'user-hanako', author_name:'花子', content:'东京今天樱花全开了🌸 你们那里呢？', likes:23 },
-        { author_id:'user-hanako', author_name:'花子', content:'咖啡☕ + 下雨天🌧️ + 耳机🎧 = 完美', likes:31 },
-    ]);
-}
+// cover drag events
+function coverDown(e){if(!adjMode)return;e.preventDefault();const p=e.touches?e.touches[0]:e;dragStart={x:p.clientX,y:p.clientY};bgStart=getBgPos();document.getElementById('cover-banner').style.cursor='grabbing';}
+function coverMove(e){if(!dragStart||!adjMode)return;e.preventDefault();const p=e.touches?e.touches[0]:e;const b=document.getElementById('cover-banner');const dx=(p.clientX-dragStart.x)/b.offsetWidth*100;const dy=(p.clientY-dragStart.y)/b.offsetHeight*100;const nx=Math.max(0,Math.min(100,bgStart.x-dx));const ny=Math.max(0,Math.min(100,bgStart.y-dy));b.style.backgroundPosition=`${nx.toFixed(1)}% ${ny.toFixed(1)}%`;}
+function coverUp(){if(dragStart)dragStart=null;if(adjMode)document.getElementById('cover-banner').style.cursor='grab';}
 
 // ── profile ───────────────────────────────────────────
-const AV_COLORS = ['#FF6699','#FF9944','#44BBFF','#55CC88','#AA88FF','#FF6644'];
-function avColor(s) { return AV_COLORS[(s||'?').charCodeAt(0) % AV_COLORS.length]; }
-
-function applyAv(el, name, avatarUrl, size) {
-    if (avatarUrl) {
-        el.style.cssText = `width:${size}px;height:${size}px;background-image:url('${avatarUrl}');background-size:cover;background-position:center;font-size:0;`;
-        el.innerText = '';
-    } else {
-        el.style.cssText = `width:${size}px;height:${size}px;background:${avColor(name)};font-size:${Math.round(size*.38)}px;`;
-        el.innerText = (name||'?')[0];
-    }
-}
-
-function renderMyProfile() {
-    document.getElementById('p-name').innerText  = my.name || '';
-    document.getElementById('p-bio').innerText   = my.bio  || '暂无个人简介';
-    document.getElementById('p-city').innerText  = '📍 '+(my.region||'点击选城市');
-    document.getElementById('p-const').innerText = '✨ '+(my.constellation||'点击选星座');
-    document.getElementById('p-birth').innerText = '🎂 '+fmtBd(my.birthday);
-    applyAv(document.getElementById('my-av'), my.name, my.avatar_url, 80);
-    renderComposeAv();
-}
-
-function renderComposeAv() {
-    const el = document.getElementById('compose-av');
-    if (el) applyAv(el, my.name, my.avatar_url, 46);
-}
-
-function openEditPanel() {
-    document.getElementById('i-name').value = my.name || '';
-    document.getElementById('i-bio').value  = my.bio  || '';
-    document.getElementById('edit-panel').style.display = 'block';
-}
-
-async function saveProfile() {
-    const name = document.getElementById('i-name').value.trim() || my.name;
-    const bio  = document.getElementById('i-bio').value.trim();
-    const { data, error } = await db.from('profiles').update({ name, bio }).eq('id', my.id).select().single();
-    if (error) { alert('保存失败：'+error.message); return; }
-    my.name = name; my.bio = bio;
-    session.name = name; session.bio = bio;
-    localStorage.setItem('session', JSON.stringify(session));
-    renderMyProfile();
-    document.getElementById('edit-panel').style.display = 'none';
-}
-
-async function handleAvatarUpload(e) {
-    const file = e.target.files[0]; if (!file) return;
-    const b64 = await compress(file, 400, .8);
-    await db.from('profiles').update({ avatar_url: b64 }).eq('id', my.id);
-    my.avatar_url = b64; session.avatar_url = b64;
-    localStorage.setItem('session', JSON.stringify(session));
-    renderMyProfile();
-}
+function renderMe(){const b=document.getElementById('cover-banner');renderCoverBanner(b,my.cover_url,my.cover_pos,my.cover_zoom);const adjBtn=document.getElementById('adj-btn');if(adjBtn)adjBtn.style.display=my.cover_url?'block':'none';applyAv(document.getElementById('my-av'),my.name,my.avatar_url,80);document.getElementById('p-name').innerText=my.name||'';document.getElementById('p-bio').innerText=my.bio||'暂无个人简介';document.getElementById('p-city').innerText='📍 '+(my.region||'点击选城市');document.getElementById('p-const').innerText='✨ '+(my.constellation||'点击选星座');document.getElementById('p-birth').innerText='🎂 '+fmtBd(my.birthday);}
+function openEditPanel(){document.getElementById('i-name').value=my.name||'';document.getElementById('i-bio').value=my.bio||'';document.getElementById('edit-panel').style.display='block';}
+async function saveProfile(){const name=document.getElementById('i-name').value.trim()||my.name;const bio=document.getElementById('i-bio').value.trim();const{error}=await db.from('profiles').update({name,bio}).eq('id',my.id);if(error){alert('保存失败：'+error.message);return;}my.name=name;my.bio=bio;session.name=name;session.bio=bio;localStorage.setItem('session',JSON.stringify(session));renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);document.getElementById('edit-panel').style.display='none';}
+async function handleAvUpload(e){const f=e.target.files[0];if(!f)return;const b64=await compress(f,400,.8);await db.from('profiles').update({avatar_url:b64}).eq('id',my.id);my.avatar_url=b64;session.avatar_url=b64;localStorage.setItem('session',JSON.stringify(session));renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);}
 
 // ── feed ─────────────────────────────────────────────
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderImgs(raw){if(!raw)return'';let a;try{a=JSON.parse(raw);}catch{a=[raw];}if(!Array.isArray(a))a=[a];a=a.filter(Boolean);if(!a.length)return'';if(a.length===1)return`<div class="imgs-1"><img src="${esc(a[0])}"></div>`;if(a.length===2)return`<div class="imgs-2">${a.map(s=>`<img src="${esc(s)}">`).join('')}</div>`;return`<div class="imgs-3">${a.slice(0,3).map(s=>`<img src="${esc(s)}">`).join('')}</div>`;}
 
-function fmtBd(bd) {
-    if (!bd) return '点击设生日';
-    const [y,m,d] = bd.split('-').map(Number);
-    return `${y}年${m}月${d}日`;
-}
+function postCard(p,cc){const own=p.author_id===my.id;const lk=likedPosts.has(p.id);const avS=own?(my.avatar_url?`background-image:url('${my.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(my.name)};font-size:17px;`):`background:${avc(p.author_name)};font-size:17px;`;const avC=own?(my.avatar_url?'':(my.name||'?')[0]):(p.author_name||'?')[0];return`<div class="post" id="post-${p.id}">
+<div class="av" style="width:46px;height:46px;cursor:pointer;${avS}" onclick="openUser('${esc(p.author_id)}','${esc(p.author_name)}')">${esc(avC)}</div>
+<div class="pb">
+  <span class="pauth" onclick="openUser('${esc(p.author_id)}','${esc(p.author_name)}')">${esc(p.author_name)}</span>
+  <div class="ptxt">${esc(p.content)}</div>
+  ${renderImgs(p.image_url)}
+  <div class="pacts">
+    <div class="act${lk?' liked':''}" data-id="${p.id}" data-author="${esc(p.author_id)}" data-likes="${p.likes}" onclick="likePost(this)">
+      <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span>${p.likes}</span></div>
+    <div class="act" onclick="openReply(${p.id},'${esc(p.author_id)}')"><svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg><span>${cc}</span></div>
+    <div class="act" onclick="sharePost(${p.id})"><svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg><span>分享</span></div>
+    ${own?`<div class="act del" onclick="delPost(${p.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span>删除</span></div>`:''}
+  </div>
+</div></div>`;}
 
-function fmtTime(ts) {
-    if (!ts) return '';
-    const diff = Date.now() - new Date(ts);
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return Math.floor(diff/60000)+'分钟前';
-    if (diff < 86400000) return Math.floor(diff/3600000)+'小时前';
-    const d = new Date(ts);
-    return `${d.getMonth()+1}/${d.getDate()}`;
-}
+async function loadFeed(type){let q=db.from('posts').select('*').order('created_at',{ascending:false});if(type==='me')q=q.eq('author_id',my.id);else if(type==='follow'){const ids=[my.id,...followed];q=q.in('author_id',ids);}const{data:posts}=await q;const{data:comms}=await db.from('comments').select('post_id');const cid=type==='me'?'list-mine':type==='follow'?'list-follow':'list-all';const cont=document.getElementById(cid);if(!posts||!posts.length){cont.innerHTML='<div class="empty">暂无内容</div>';return;}const cnt={};(comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);cont.innerHTML=posts.map(p=>postCard(p,cnt[p.id]||0)).join('');}
 
-function renderImgs(raw) {
-    if (!raw) return '';
-    let a; try { a = JSON.parse(raw); } catch { a = [raw]; }
-    if (!Array.isArray(a)) a = [a];
-    a = a.filter(Boolean);
-    if (!a.length) return '';
-    if (a.length === 1) return `<div class="imgs-1"><img src="${esc(a[0])}"></div>`;
-    if (a.length === 2) return `<div class="imgs-2">${a.map(s=>`<img src="${esc(s)}">`).join('')}</div>`;
-    return `<div class="imgs-3">${a.slice(0,3).map(s=>`<img src="${esc(s)}">`).join('')}</div>`;
-}
+async function likePost(el){const id=Number(el.dataset.id),author=el.dataset.author,wasL=likedPosts.has(id),cur=Number(el.dataset.likes);if(wasL){likedPosts.delete(id);el.classList.remove('liked');}else{likedPosts.add(id);el.classList.add('liked');}localStorage.setItem('lp_'+my.id,JSON.stringify([...likedPosts]));const next=wasL?Math.max(0,cur-1):cur+1;el.querySelector('span').innerText=next;el.dataset.likes=next;await db.from('posts').update({likes:next}).eq('id',id);if(!wasL&&author!==my.id)await db.from('notifications').insert([{recipient_id:author,type:'like',sender_id:my.id,sender_name:my.name,post_id:id,message:'赞了你的帖子'}]);}
+async function delPost(id){if(!confirm('确定删除？'))return;await db.from('comments').delete().eq('post_id',id);const{error}=await db.from('posts').delete().eq('id',id);if(!error)document.getElementById('post-'+id)?.remove();}
+async function sharePost(id){const u=`${location.origin}${location.pathname}?post=${id}`;try{await navigator.clipboard.writeText(u);alert('链接已复制！');}catch{prompt('复制链接：',u);}}
 
-function postCard(p, cCount) {
-    const isOwn   = p.author_id === my.id;
-    const isLiked = likedPosts.has(p.id);
-    const avUrl   = isOwn ? my.avatar_url : '';
-    const avStyle = isOwn
-        ? (avUrl ? `background-image:url('${avUrl}');background-size:cover;background-position:center;font-size:0;` : `background:${avColor(my.name)};font-size:17px;`)
-        : `background:${avColor(p.author_name)};font-size:17px;`;
-    const avText = isOwn ? (avUrl?'':(my.name||'?')[0]) : (p.author_name||'?')[0];
-    return `<div class="post" id="post-${p.id}">
-        <div class="av" style="width:46px;height:46px;cursor:pointer;${avStyle}" onclick="openUserView('${esc(p.author_id)}','${esc(p.author_name)}')">${esc(avText)}</div>
-        <div class="post-body">
-            <span class="post-author" onclick="openUserView('${esc(p.author_id)}','${esc(p.author_name)}')">${esc(p.author_name)}</span>
-            <div class="post-text">${esc(p.content)}</div>
-            ${renderImgs(p.image_url)}
-            <div class="post-actions">
-                <div class="act${isLiked?' liked':''}" data-id="${p.id}" data-author="${esc(p.author_id)}" data-likes="${p.likes}" onclick="like(this)">
-                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                    <span>${p.likes}</span>
-                </div>
-                <div class="act" onclick="openReply(${p.id},'${esc(p.author_id)}')">
-                    <svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>
-                    <span>${cCount}</span>
-                </div>
-                <div class="act" onclick="sharePost(${p.id})">
-                    <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
-                    <span>分享</span>
-                </div>
-                ${isOwn?`<div class="act del" onclick="deletePost(${p.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span>删除</span></div>`:''}
-            </div>
-        </div>
-    </div>`;
-}
+// ── compose ───────────────────────────────────────────
+async function handleFiles(e){const r=3-postImgs.length;if(r<=0){alert('最多3张');return;}for(const f of Array.from(e.target.files).slice(0,r))postImgs.push(await compress(f));e.target.value='';renderPgrid();}
+function renderPgrid(){document.getElementById('pgrid').innerHTML=postImgs.map((s,i)=>`<div class="pwrap"><img class="pthumb" src="${s}"><div class="pdel" onclick="rmImg(${i})">×</div></div>`).join('');}
+function rmImg(i){postImgs.splice(i,1);renderPgrid();}
+async function publish(){const txt=document.getElementById('inp').value.trim();if(!txt&&!postImgs.length)return;const iv=postImgs.length?JSON.stringify(postImgs):null;const{error}=await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:txt,image_url:iv,likes:0}]);if(error){alert('发帖失败：'+error.message);return;}document.getElementById('inp').value='';postImgs=[];renderPgrid();await loadFeed('all');}
 
-async function loadFeed(type) {
-    let q = db.from('posts').select('*').order('created_at',{ascending:false});
-    if (type === 'me') {
-        q = q.eq('author_id', my.id);
-    } else if (type === 'follow') {
-        const ids = [my.id, ...followed];
-        q = q.in('author_id', ids);
-    }
-    const { data: posts } = await q;
-    const { data: comms } = await db.from('comments').select('post_id');
-    const cid = type==='me'?'list-mine':type==='follow'?'list-follow':'list-all';
-    const container = document.getElementById(cid);
-    if (!posts||!posts.length) { container.innerHTML='<div class="empty">暂无内容</div>'; return; }
-    const cnt = {}; (comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);
-    container.innerHTML = posts.map(p=>postCard(p, cnt[p.id]||0)).join('');
-}
+// ── star / city / birthday ────────────────────────────
+function openConstMenu(){document.getElementById('menu-const').style.display='flex';}
+function closeConst(){document.getElementById('menu-const').style.display='none';}
+async function pickConst(n){const{error}=await db.from('profiles').update({constellation:n}).eq('id',my.id);if(!error){my.constellation=n;session.constellation=n;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeConst();}
 
-async function like(el) {
-    const id       = Number(el.dataset.id);
-    const authorId = el.dataset.author;
-    const wasLiked = likedPosts.has(id);
-    const cur      = Number(el.dataset.likes);
-    if (wasLiked) { likedPosts.delete(id); el.classList.remove('liked'); }
-    else          { likedPosts.add(id);    el.classList.add('liked'); }
-    localStorage.setItem('liked_'+my.id, JSON.stringify([...likedPosts]));
-    const next = wasLiked ? Math.max(0,cur-1) : cur+1;
-    el.querySelector('span').innerText = next;
-    el.dataset.likes = next;
-    await db.from('posts').update({likes:next}).eq('id',id);
-    if (!wasLiked && authorId !== my.id) {
-        await db.from('notifications').insert([{ recipient_id:authorId, type:'like', sender_id:my.id, sender_name:my.name, post_id:id, message:'赞了你的帖子' }]);
-    }
-}
+const COUNTRIES=[{f:'🇨🇳',n:'中国',c:['北京','上海','广州','深圳','杭州','成都','武汉','西安','重庆','南京']},{f:'🇯🇵',n:'日本',c:['东京','大阪','京都','名古屋','福冈','横滨']},{f:'🇰🇷',n:'韩国',c:['首尔','釜山','仁川','大邱']},{f:'🇺🇸',n:'美国',c:['纽约','洛杉矶','旧金山','芝加哥','西雅图','波士顿']},{f:'🇬🇧',n:'英国',c:['伦敦','曼彻斯特','伯明翰','爱丁堡']},{f:'🇫🇷',n:'法国',c:['巴黎','里昂','马赛','尼斯']},{f:'🇩🇪',n:'德国',c:['柏林','慕尼黑','汉堡','法兰克福']},{f:'🇮🇹',n:'意大利',c:['罗马','米兰','威尼斯','佛罗伦萨']},{f:'🇪🇸',n:'西班牙',c:['巴塞罗那','马德里','塞维利亚']},{f:'🇵🇹',n:'葡萄牙',c:['里斯本','波尔图']},{f:'🇳🇱',n:'荷兰',c:['阿姆斯特丹','鹿特丹']},{f:'🇨🇭',n:'瑞士',c:['苏黎世','日内瓦']},{f:'🇸🇪',n:'瑞典',c:['斯德哥尔摩','哥德堡']},{f:'🇦🇺',n:'澳大利亚',c:['悉尼','墨尔本','布里斯班']},{f:'🇨🇦',n:'加拿大',c:['多伦多','温哥华','蒙特利尔']},{f:'🇳🇿',n:'新西兰',c:['奥克兰','惠灵顿']},{f:'🇲🇽',n:'墨西哥',c:['墨西哥城','瓜达拉哈拉']},{f:'🇧🇷',n:'巴西',c:['圣保罗','里约热内卢']},{f:'🇦🇷',n:'阿根廷',c:['布宜诺斯艾利斯']},{f:'🇸🇬',n:'新加坡',c:['新加坡']},{f:'🇭🇰',n:'香港',c:['香港岛','九龙','新界']},{f:'🇹🇼',n:'台湾',c:['台北','台中','高雄','台南']},{f:'🇹🇭',n:'泰国',c:['曼谷','清迈','芭提雅','普吉']},{f:'🇲🇾',n:'马来西亚',c:['吉隆坡','槟城','新山']},{f:'🇮🇩',n:'印度尼西亚',c:['雅加达','巴厘岛']},{f:'🇻🇳',n:'越南',c:['河内','胡志明市']},{f:'🇮🇳',n:'印度',c:['孟买','新德里','班加罗尔']},{f:'🇦🇪',n:'阿联酋',c:['迪拜','阿布扎比']},{f:'🇷🇺',n:'俄罗斯',c:['莫斯科','圣彼得堡']},{f:'🇿🇦',n:'南非',c:['开普敦','约翰内斯堡']}];
+function openCityMenu(){selCountry=null;showCountries();document.getElementById('menu-city').style.display='flex';}
+function closeCity(){document.getElementById('menu-city').style.display='none';}
+function showCountries(){selCountry=null;document.getElementById('city-title').innerText='选择国家';document.getElementById('city-back').style.display='none';document.getElementById('city-list').innerHTML=COUNTRIES.map(c=>`<div class="mi" onclick="showCities('${c.n}')">${c.f} ${c.n}</div>`).join('')+`<div class="mi cancel" onclick="closeCity()">取消</div>`;}
+function showCities(cn){selCountry=COUNTRIES.find(c=>c.n===cn);document.getElementById('city-title').innerText=selCountry.f+' '+selCountry.n;document.getElementById('city-back').style.display='block';document.getElementById('city-list').innerHTML=selCountry.c.map(city=>`<div class="mi" onclick="pickCity('${city}')">${city}</div>`).join('')+`<div class="mi cancel" onclick="closeCity()">取消</div>`;}
+async function pickCity(city){const val=selCountry.n+' · '+city;const{error}=await db.from('profiles').update({region:val}).eq('id',my.id);if(!error){my.region=val;session.region=val;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeCity();}
 
-async function deletePost(id) {
-    if (!confirm('确定删除？')) return;
-    await db.from('comments').delete().eq('post_id',id);
-    const { error } = await db.from('posts').delete().eq('id',id);
-    if (!error) document.getElementById('post-'+id)?.remove();
-}
-
-async function sharePost(id) {
-    const url = `${location.origin}${location.pathname}?post=${id}`;
-    try { await navigator.clipboard.writeText(url); alert('链接已复制！'); }
-    catch { prompt('复制链接：', url); }
-}
-
-async function publish() {
-    const txt = document.getElementById('inp-text').value.trim();
-    if (!txt && !postImgs.length) return;
-    const imgVal = postImgs.length ? JSON.stringify(postImgs) : null;
-    const { error } = await db.from('posts').insert([{ author_id:my.id, author_name:my.name, content:txt, image_url:imgVal, likes:0 }]);
-    if (error) { alert('发帖失败：'+error.message); return; }
-    document.getElementById('inp-text').value = '';
-    postImgs = []; renderPreGrid();
-    await loadFeed('all');
-}
-
-// ── images ────────────────────────────────────────────
-function compress(file, maxPx=1000, q=.78) {
-    return new Promise(res => {
-        const img = new Image(), url = URL.createObjectURL(file);
-        img.onload = () => {
-            URL.revokeObjectURL(url);
-            const s = Math.min(1, maxPx/Math.max(img.width,img.height));
-            const cv = document.createElement('canvas');
-            cv.width  = Math.round(img.width*s);
-            cv.height = Math.round(img.height*s);
-            cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-            res(cv.toDataURL('image/jpeg',q));
-        };
-        img.src = url;
-    });
-}
-
-async function handleFiles(e) {
-    const rem = 3 - postImgs.length;
-    if (rem <= 0) { alert('最多 3 张'); return; }
-    for (const f of Array.from(e.target.files).slice(0,rem)) postImgs.push(await compress(f));
-    e.target.value = '';
-    renderPreGrid();
-}
-
-function renderPreGrid() {
-    document.getElementById('pre-grid').innerHTML = postImgs.map((src,i)=>
-        `<div class="pre-wrap"><img class="pre-thumb" src="${src}"><div class="pre-del" onclick="removeImg(${i})">×</div></div>`
-    ).join('');
-}
-
-function removeImg(i) { postImgs.splice(i,1); renderPreGrid(); }
-
-// ── notifications ─────────────────────────────────────
-async function checkNotifDot() {
-    const { count } = await db.from('notifications').select('*',{count:'exact',head:true}).eq('recipient_id',my.id).eq('is_read',false);
-    document.getElementById('n-dot').style.display = count > 0 ? 'block' : 'none';
-}
-
-async function loadNotifications() {
-    const { data } = await db.from('notifications').select('*').eq('recipient_id',my.id).order('created_at',{ascending:false}).limit(50);
-    await db.from('notifications').update({is_read:true}).eq('recipient_id',my.id).eq('is_read',false);
-    document.getElementById('n-dot').style.display = 'none';
-    const container = document.getElementById('notif-container');
-    if (!data||!data.length) { container.innerHTML='<div class="empty">暂无通知</div>'; return; }
-    const icons = { like:'❤️', comment:'💬', share:'🔄' };
-    container.innerHTML = data.map(n => `
-        <div class="notif-row${n.is_read?'':' unread'}" onclick="n.post_id&&openReply(n.post_id,'')">
-            <div class="notif-icon">${icons[n.type]||'🔔'}</div>
-            <div><div class="notif-text"><strong>${esc(n.sender_name)}</strong> ${esc(n.message)}</div>
-            <div class="notif-time">${fmtTime(n.created_at)}</div></div>
-        </div>`).join('');
-}
-
-// ── sign / constellation / city / birthday ────────────
-function openConstMenu() { document.getElementById('menu-const').style.display='flex'; }
-function closeConst()    { document.getElementById('menu-const').style.display='none'; }
-async function pickConst(name) {
-    const { error } = await db.from('profiles').update({constellation:name}).eq('id',my.id);
-    if (!error) { my.constellation=name; session.constellation=name; localStorage.setItem('session',JSON.stringify(session)); renderMyProfile(); }
-    closeConst();
-}
-
-const COUNTRIES = [
-    {f:'🇨🇳',n:'中国',     c:['北京','上海','广州','深圳','杭州','成都','武汉','西安','重庆','南京']},
-    {f:'🇯🇵',n:'日本',     c:['东京','大阪','京都','名古屋','福冈','横滨']},
-    {f:'🇰🇷',n:'韩国',     c:['首尔','釜山','仁川','大邱']},
-    {f:'🇺🇸',n:'美国',     c:['纽约','洛杉矶','旧金山','芝加哥','西雅图','波士顿']},
-    {f:'🇬🇧',n:'英国',     c:['伦敦','曼彻斯特','伯明翰','爱丁堡']},
-    {f:'🇫🇷',n:'法国',     c:['巴黎','里昂','马赛','尼斯']},
-    {f:'🇩🇪',n:'德国',     c:['柏林','慕尼黑','汉堡','法兰克福']},
-    {f:'🇮🇹',n:'意大利',   c:['罗马','米兰','威尼斯','佛罗伦萨']},
-    {f:'🇪🇸',n:'西班牙',   c:['巴塞罗那','马德里','塞维利亚']},
-    {f:'🇵🇹',n:'葡萄牙',   c:['里斯本','波尔图']},
-    {f:'🇳🇱',n:'荷兰',     c:['阿姆斯特丹','鹿特丹']},
-    {f:'🇨🇭',n:'瑞士',     c:['苏黎世','日内瓦','伯尔尼']},
-    {f:'🇸🇪',n:'瑞典',     c:['斯德哥尔摩','哥德堡']},
-    {f:'🇦🇺',n:'澳大利亚', c:['悉尼','墨尔本','布里斯班','珀斯']},
-    {f:'🇨🇦',n:'加拿大',   c:['多伦多','温哥华','蒙特利尔']},
-    {f:'🇳🇿',n:'新西兰',   c:['奥克兰','惠灵顿']},
-    {f:'🇲🇽',n:'墨西哥',   c:['墨西哥城','瓜达拉哈拉']},
-    {f:'🇧🇷',n:'巴西',     c:['圣保罗','里约热内卢']},
-    {f:'🇦🇷',n:'阿根廷',   c:['布宜诺斯艾利斯']},
-    {f:'🇸🇬',n:'新加坡',   c:['新加坡']},
-    {f:'🇭🇰',n:'香港',     c:['香港岛','九龙','新界']},
-    {f:'🇹🇼',n:'台湾',     c:['台北','台中','高雄','台南']},
-    {f:'🇹🇭',n:'泰国',     c:['曼谷','清迈','芭提雅','普吉']},
-    {f:'🇲🇾',n:'马来西亚', c:['吉隆坡','槟城','新山']},
-    {f:'🇮🇩',n:'印度尼西亚',c:['雅加达','巴厘岛','泗水']},
-    {f:'🇻🇳',n:'越南',     c:['河内','胡志明市','岘港']},
-    {f:'🇮🇳',n:'印度',     c:['孟买','新德里','班加罗尔']},
-    {f:'🇦🇪',n:'阿联酋',   c:['迪拜','阿布扎比']},
-    {f:'🇷🇺',n:'俄罗斯',   c:['莫斯科','圣彼得堡']},
-    {f:'🇿🇦',n:'南非',     c:['开普敦','约翰内斯堡']},
-];
-
-function openCityMenu() { selCountry=null; showCountries(); document.getElementById('menu-city').style.display='flex'; }
-function closeCity()    { document.getElementById('menu-city').style.display='none'; }
-function showCountries() {
-    selCountry=null;
-    document.getElementById('city-title').innerText='选择国家';
-    document.getElementById('city-back').style.display='none';
-    document.getElementById('city-list').innerHTML =
-        COUNTRIES.map(c=>`<div class="mi" onclick="showCities('${c.n}')">${c.f} ${c.n}</div>`).join('') +
-        `<div class="mi cancel" onclick="closeCity()">取消</div>`;
-}
-function showCities(cName) {
-    selCountry = COUNTRIES.find(c=>c.n===cName);
-    document.getElementById('city-title').innerText = selCountry.f+' '+selCountry.n;
-    document.getElementById('city-back').style.display='block';
-    document.getElementById('city-list').innerHTML =
-        selCountry.c.map(city=>`<div class="mi" onclick="pickCity('${city}')">${city}</div>`).join('') +
-        `<div class="mi cancel" onclick="closeCity()">取消</div>`;
-}
-async function pickCity(city) {
-    const val = selCountry.n+' · '+city;
-    const { error } = await db.from('profiles').update({region:val}).eq('id',my.id);
-    if (!error) { my.region=val; session.region=val; localStorage.setItem('session',JSON.stringify(session)); renderMyProfile(); }
-    closeCity();
-}
-
-const BD_YEARS  = Array.from({length:127},(_,i)=>2026-i);
-const BD_MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-function daysInMonth(y,m) { return new Date(y,m,0).getDate(); }
-
-function openBdMenu() { bdStep='year'; bdY=null; bdM=null; renderBd(); document.getElementById('menu-bd').style.display='flex'; }
-function closeBd()    { document.getElementById('menu-bd').style.display='none'; }
-function bdBack() { if(bdStep==='day'){bdStep='month';bdM=null;}else{bdStep='year';bdY=null;} renderBd(); }
-function renderBd() {
-    const titles={year:'选择出生年份',month:`${bdY}年 · 选择月份`,day:`${bdY}年${bdM}月 · 选择日`};
-    document.getElementById('bd-title').innerText = titles[bdStep];
-    document.getElementById('bd-back').style.display = bdStep==='year'?'none':'block';
-    let html='';
-    if (bdStep==='year')  html = BD_YEARS.map(y=>`<div class="mi" onclick="bdYear(${y})">${y} 年</div>`).join('');
-    else if (bdStep==='month') html = BD_MONTHS.map((m,i)=>`<div class="mi" onclick="bdMonth(${i+1})">${m}</div>`).join('');
-    else html = Array.from({length:daysInMonth(bdY,bdM)},(_,i)=>i+1).map(d=>`<div class="mi" onclick="bdDay(${d})">${d} 日</div>`).join('');
-    document.getElementById('bd-list').innerHTML = html+`<div class="mi cancel" onclick="closeBd()">取消</div>`;
-}
-function bdYear(y) { bdY=y; bdStep='month'; renderBd(); }
-function bdMonth(m){ bdM=m; bdStep='day';   renderBd(); }
-async function bdDay(d) {
-    const val = `${bdY}-${String(bdM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const { error } = await db.from('profiles').update({birthday:val}).eq('id',my.id);
-    if (!error) { my.birthday=val; session.birthday=val; localStorage.setItem('session',JSON.stringify(session)); renderMyProfile(); }
-    closeBd();
-}
+const BDY=Array.from({length:127},(_,i)=>2026-i),BDM=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+function dim(y,m){return new Date(y,m,0).getDate();}
+function openBdMenu(){bdStep='year';bdY=null;bdM=null;renderBd();document.getElementById('menu-bd').style.display='flex';}
+function closeBd(){document.getElementById('menu-bd').style.display='none';}
+function bdBack(){if(bdStep==='day'){bdStep='month';bdM=null;}else{bdStep='year';bdY=null;}renderBd();}
+function renderBd(){const t={year:'选择出生年份',month:`${bdY}年 · 选择月份`,day:`${bdY}年${bdM}月 · 选择日`};document.getElementById('bd-title').innerText=t[bdStep];document.getElementById('bd-back').style.display=bdStep==='year'?'none':'block';let h='';if(bdStep==='year')h=BDY.map(y=>`<div class="mi" onclick="bdYear(${y})">${y} 年</div>`).join('');else if(bdStep==='month')h=BDM.map((m,i)=>`<div class="mi" onclick="bdMonth(${i+1})">${m}</div>`).join('');else h=Array.from({length:dim(bdY,bdM)},(_,i)=>i+1).map(d=>`<div class="mi" onclick="bdDay(${d})">${d} 日</div>`).join('');document.getElementById('bd-list').innerHTML=h+`<div class="mi cancel" onclick="closeBd()">取消</div>`;}
+function bdYear(y){bdY=y;bdStep='month';renderBd();}
+function bdMonth(m){bdM=m;bdStep='day';renderBd();}
+async function bdDay(d){const v=`${bdY}-${String(bdM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const{error}=await db.from('profiles').update({birthday:v}).eq('id',my.id);if(!error){my.birthday=v;session.birthday=v;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeBd();}
 
 // ── nav ───────────────────────────────────────────────
-function switchNav(v) {
-    document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
-    document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));
-    const vm={home:'v-home',follow:'v-follow',msg:'v-msg',me:'v-me'};
-    const tm={home:'首页',follow:'动态',msg:'通知',me:'个人主页'};
-    document.getElementById(vm[v]).classList.add('on');
-    document.getElementById('nav-'+v).classList.add('on');
-    document.getElementById('title').innerText = tm[v];
-    if (v==='follow') loadFeed('follow');
-    if (v==='me')     loadFeed('me');
-    if (v==='msg')    loadNotifications();
-}
+function switchNav(v){document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));const vm={home:'v-home',follow:'v-follow',msg:'v-msg',me:'v-me'};const tm={home:'首页',follow:'动态',msg:'消息',me:'个人主页'};document.getElementById(vm[v]).classList.add('on');document.getElementById('nav-'+v).classList.add('on');document.getElementById('title').innerText=tm[v];if(v==='follow')loadFeed('follow');if(v==='me')loadFeed('me');if(v==='msg'){loadNotifications();loadDmList();}}
 
-// ── user view ─────────────────────────────────────────
-async function openUserView(uid, uname) {
-    if (uid===my.id) { switchNav('me'); return; }
-    viewingUid = uid;
-    const panel = document.getElementById('v-user');
-    document.getElementById('u-hd-name').innerText = uname;
-    document.getElementById('u-name').innerText = '加载中…';
-    document.getElementById('u-posts').innerHTML = '<div class="empty">加载中…</div>';
-    updateFBtn();
-    panel.style.display='block';
-    document.body.style.overflow='hidden';
+// ── msg tab ───────────────────────────────────────────
+function showMsgTab(t){document.getElementById('msg-notif').style.display=t==='notif'?'block':'none';document.getElementById('msg-dm').style.display=t==='dm'?'block':'none';document.getElementById('stab-notif').className='stab'+(t==='notif'?' on':'');document.getElementById('stab-dm').className='stab'+(t==='dm'?' on':'');}
 
-    const { data:p } = await db.from('profiles').select('*').eq('id',uid).maybeSingle();
-    const avEl = document.getElementById('u-av');
-    if (p) {
-        document.getElementById('u-name').innerText    = p.name||uname;
-        document.getElementById('u-bio').innerText     = p.bio||'暂无简介';
-        document.getElementById('u-city').innerText   = '📍 '+(p.region||'未设置');
-        document.getElementById('u-const').innerText  = '✨ '+(p.constellation||'未设置');
-        document.getElementById('u-birth').innerText  = '🎂 '+fmtBd(p.birthday);
-        applyAv(avEl, p.name||uname, p.avatar_url, 80);
-    } else {
-        document.getElementById('u-name').innerText = uname;
-        applyAv(avEl, uname, null, 80);
-    }
+// ── notifications ─────────────────────────────────────
+async function checkNdot(){const{count}=await db.from('notifications').select('*',{count:'exact',head:true}).eq('recipient_id',my.id).eq('is_read',false);document.getElementById('ndot').style.display=count>0?'block':'none';}
+async function loadNotifications(){const{data}=await db.from('notifications').select('*').eq('recipient_id',my.id).order('created_at',{ascending:false}).limit(50);await db.from('notifications').update({is_read:true}).eq('recipient_id',my.id).eq('is_read',false);document.getElementById('ndot').style.display='none';const icons={like:'❤️',comment:'💬'};const cont=document.getElementById('notif-list');if(!data||!data.length){cont.innerHTML='<div class="empty">暂无通知</div>';return;}cont.innerHTML=data.map(n=>`<div class="nrow${n.is_read?'':' unread'}"><div style="font-size:22px">${icons[n.type]||'🔔'}</div><div><div style="font-size:14px"><strong>${esc(n.sender_name)}</strong> ${esc(n.message)}</div><div class="ntime">${fmtTime(n.created_at)}</div></div></div>`).join('');}
 
-    const { data:posts } = await db.from('posts').select('*').eq('author_id',uid).order('created_at',{ascending:false});
-    const { data:comms } = await db.from('comments').select('post_id');
-    if (!posts||!posts.length) { document.getElementById('u-posts').innerHTML='<div class="empty">TA 还没有发过帖子</div>'; return; }
-    const cnt={}; (comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);
-    document.getElementById('u-posts').innerHTML = posts.map(p=>postCard(p,cnt[p.id]||0)).join('');
-}
+// ── DM list ───────────────────────────────────────────
+async function loadDmList(){const{data}=await db.from('messages').select('*').or(`sender_id.eq.${my.id},recipient_id.eq.${my.id}`).order('created_at',{ascending:false});const cont=document.getElementById('dm-list');if(!data||!data.length){cont.innerHTML='<div class="empty">暂无私信</div>';return;}const conv={};data.forEach(m=>{const oid=m.sender_id===my.id?m.recipient_id:m.sender_id;const on=m.sender_id===my.id?m.recipient_name:m.sender_name;if(!conv[oid]){conv[oid]={id:oid,name:on||oid,last:m,unread:0};}if(!m.is_read&&m.recipient_id===my.id)conv[oid].unread++;});cont.innerHTML=Object.values(conv).map(c=>`<div class="dm-row" onclick="openChat('${esc(c.id)}','${esc(c.name)}')"><div class="av" style="width:46px;height:46px;font-size:17px;${`background:${avc(c.name)};`}">${esc((c.name||'?')[0])}</div><div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:15px;">${esc(c.name)}</div><div class="dm-preview">${esc(c.last.content||'[图片]')}</div></div>${c.unread>0?`<div class="dm-unread">${c.unread}</div>`:''}</div>`).join('');}
 
-function closeUserView() { document.getElementById('v-user').style.display='none'; document.body.style.overflow=''; viewingUid=null; }
+// ── chat ─────────────────────────────────────────────
+async function openChat(uid,name){chatUid=uid;chatName=name;chatImg=null;document.getElementById('chat-title').innerText=name;document.getElementById('chat-msgs').innerHTML='<div class="empty">加载中…</div>';const cv=document.getElementById('v-chat');cv.style.display='flex';document.body.style.overflow='hidden';await loadChatMsgs();}
+function closeChat(){document.getElementById('v-chat').style.display='none';document.body.style.overflow='';chatUid=null;chatImg=null;}
+async function loadChatMsgs(){const{data}=await db.from('messages').select('*').or(`and(sender_id.eq.${my.id},recipient_id.eq.${chatUid}),and(sender_id.eq.${chatUid},recipient_id.eq.${my.id})`).order('created_at',{ascending:true});await db.from('messages').update({is_read:true}).eq('recipient_id',my.id).eq('sender_id',chatUid);const cont=document.getElementById('chat-msgs');if(!data||!data.length){cont.innerHTML='<div class="empty">发送第一条消息吧</div>';return;}cont.innerHTML=data.map(m=>{const mine=m.sender_id===my.id;return`<div class="chat-msg${mine?' mine':''}"><div class="av" style="width:34px;height:34px;font-size:13px;${mine?(my.avatar_url?`background-image:url('${my.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(my.name)};`):`background:${avc(m.sender_name)};`}">${mine?(my.avatar_url?'':(my.name||'?')[0]):(m.sender_name||'?')[0]}</div><div><div class="chat-bubble">${esc(m.content||'')}</div>${m.image_url?`<img class="chat-img" src="${esc(m.image_url)}">`:''}<div style="font-size:11px;color:#aaa;margin-top:3px;text-align:${mine?'right':'left'}">${fmtTime(m.created_at)}</div></div></div>`;}).join('');cont.scrollTop=cont.scrollHeight;}
+async function handleChatImg(e){const f=e.target.files[0];if(!f)return;chatImg=await compress(f,800,.75);e.target.value='';alert('图片已选择，点击发送');}
+async function sendMsg(){const txt=document.getElementById('chat-inp').value.trim();if(!txt&&!chatImg)return;const{error}=await db.from('messages').insert([{sender_id:my.id,sender_name:my.name,recipient_id:chatUid,recipient_name:chatName,content:txt,image_url:chatImg}]);if(error){alert('发送失败：'+error.message);return;}document.getElementById('chat-inp').value='';chatImg=null;await loadChatMsgs();}
 
-function toggleFollow() {
-    if (!viewingUid) return;
-    const i = followed.indexOf(viewingUid);
-    if (i>=0) followed.splice(i,1); else followed.push(viewingUid);
-    localStorage.setItem('fol_'+my.id, JSON.stringify(followed));
-    updateFBtn();
-}
+// ── user profile view ─────────────────────────────────
+async function openUser(uid,uname){if(uid===my.id){switchNav('me');return;}viewingUid=uid;viewingName=uname;const panel=document.getElementById('v-user');document.getElementById('u-hdn').innerText=uname;document.getElementById('u-name').innerText='加载中…';document.getElementById('u-posts').innerHTML='<div class="empty">加载中…</div>';updateFBtn();panel.style.display='block';document.body.style.overflow='hidden';const{data:p}=await db.from('profiles').select('*').eq('id',uid).maybeSingle();const ucov=document.getElementById('u-cover');const uav=document.getElementById('u-av');if(p){document.getElementById('u-name').innerText=p.name||uname;document.getElementById('u-bio').innerText=p.bio||'暂无简介';document.getElementById('u-city').innerText='📍 '+(p.region||'未设置');document.getElementById('u-const').innerText='✨ '+(p.constellation||'未设置');document.getElementById('u-birth').innerText='🎂 '+fmtBd(p.birthday);renderCoverBanner(ucov,p.cover_url,p.cover_pos,p.cover_zoom);applyAv(uav,p.name||uname,p.avatar_url,80);}else{document.getElementById('u-name').innerText=uname;renderCoverBanner(ucov,'','50% 50%',100);applyAv(uav,uname,null,80);}const{data:posts}=await db.from('posts').select('*').eq('author_id',uid).order('created_at',{ascending:false});const{data:comms}=await db.from('comments').select('post_id');if(!posts||!posts.length){document.getElementById('u-posts').innerHTML='<div class="empty">TA 还没有发过帖子</div>';return;}const cnt={};(comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);document.getElementById('u-posts').innerHTML=posts.map(p=>postCard(p,cnt[p.id]||0)).join('');}
+function closeUser(){document.getElementById('v-user').style.display='none';document.body.style.overflow='';viewingUid=null;}
+function toggleFollow(){if(!viewingUid)return;const i=followed.indexOf(viewingUid);if(i>=0)followed.splice(i,1);else followed.push(viewingUid);localStorage.setItem('fol_'+my.id,JSON.stringify(followed));updateFBtn();}
+function updateFBtn(){const isF=followed.includes(viewingUid);const fbtn=document.getElementById('u-fbtn');const dmbtn=document.getElementById('u-dm-btn');fbtn.innerText=isF?'已关注':'关注';if(isF){fbtn.style.cssText='font-size:13px;padding:5px 14px;background:#fff;color:var(--pk);border:1.5px solid var(--pk);border-radius:20px;cursor:pointer;';dmbtn.style.display='block';}else{fbtn.className='btn-pk';fbtn.style.cssText='font-size:13px;padding:5px 14px;';dmbtn.style.display='none';}}
 
-function updateFBtn() {
-    const btn = document.getElementById('u-fbtn');
-    const isF = followed.includes(viewingUid);
-    btn.innerText = isF?'已关注':'关注';
-    if (isF) { btn.style.cssText='font-size:13px;padding:5px 14px;background:#fff;color:var(--pk);border:1.5px solid var(--pk);border-radius:20px;cursor:pointer;'; }
-    else     { btn.className='btn-pk'; btn.style.cssText='font-size:13px;padding:5px 14px;'; }
-}
+// ── reply / comments ──────────────────────────────────
+function openReply(id,authorId){curPId=id;curPostAuthorId=authorId;replyingTo=null;cancelRto();document.getElementById('modal-reply').style.display='flex';renderReply();}
+function closeReply(){document.getElementById('modal-reply').style.display='none';replyingTo=null;cancelRto();}
+function setRto(cid,name){replyingTo={id:cid,name};document.getElementById('rto-name').innerText=name;document.getElementById('rto-bar').style.display='flex';document.getElementById('reply-inp').focus();}
+function cancelRto(){replyingTo=null;document.getElementById('rto-bar').style.display='none';}
 
-// ── reply ─────────────────────────────────────────────
-function openReply(id, authorId) { curPId=id; curPostAuthorId=authorId; document.getElementById('modal-reply').style.display='flex'; renderReply(); }
-function closeReply() { document.getElementById('modal-reply').style.display='none'; }
+async function renderReply(){const{data}=await db.from('comments').select('*').eq('post_id',curPId).order('created_at',{ascending:true});const list=data||[];if(!list.length){document.getElementById('reply-list').innerHTML='<div class="empty" style="padding:20px">还没有评论，来说第一句话吧</div>';return;}document.getElementById('reply-list').innerHTML=list.map(c=>{const isHost=curPostAuthorId&&c.author_id===curPostAuthorId;const isMine=c.author_id===my.id;const avS=isMine?(my.avatar_url?`background-image:url('${my.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(my.name)};font-size:13px;`):`background:${avc(c.author_name)};font-size:13px;`;const avC=isMine?(my.avatar_url?'':(my.name||'?')[0]):(c.author_name||'?')[0];const isLikedC=likedComments.has(c.id);return`<div class="cmt-row" id="c-${c.id}"><div class="av" style="width:32px;height:32px;flex-shrink:0;${avS}">${esc(avC)}</div><div class="cmt-body"><div class="cmt-name">${esc(c.author_name)}${isHost?'<span class="badge-host">楼主</span>':''}</div><div class="cmt-txt">${c.reply_to_name?`<span class="cmt-reply-to">@${esc(c.reply_to_name)}</span>`:''}${esc(c.content)}</div><div class="cmt-acts"><span class="cmt-act${isLikedC?' liked':''}" onclick="likeComment(${c.id},this,${c.likes||0})">${isLikedC?'❤️':'🤍'} ${c.likes||0}</span><span class="cmt-act" onclick="setRto(${c.id},'${esc(c.author_name)}')">回复</span><span class="cmt-act" onclick="shareComment(${c.id})">分享</span></div></div></div>`;}).join('');}
 
-async function renderReply() {
-    const { data } = await db.from('comments').select('*').eq('post_id',curPId).order('created_at',{ascending:true});
-    const list = data||[];
-    if (!list.length) { document.getElementById('reply-list').innerHTML='<div class="empty" style="padding:20px">还没有评论，来说第一句话吧</div>'; return; }
-    document.getElementById('reply-list').innerHTML = list.map(c => {
-        const isHost = curPostAuthorId && c.author_id===curPostAuthorId;
-        const isMine = c.author_id===my.id;
-        const avS = isMine
-            ? (my.avatar_url?`background-image:url('${my.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avColor(my.name)};font-size:14px;`)
-            : `background:${avColor(c.author_name)};font-size:14px;`;
-        const avC = isMine?(my.avatar_url?'':(my.name||'?')[0]):(c.author_name||'?')[0];
-        return `<div style="display:flex;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #f2f2f2;">
-            <div class="av" style="width:34px;height:34px;flex-shrink:0;${avS}">${esc(avC)}</div>
-            <div><div style="font-weight:bold;font-size:14px;">${esc(c.author_name)}${isHost?'<span class="badge-host">楼主</span>':''}</div>
-            <div style="font-size:14px;margin-top:3px;">${esc(c.content)}</div></div>
-        </div>`;
-    }).join('');
-}
+async function likeComment(id,el,cur){const wasL=likedComments.has(id);if(wasL){likedComments.delete(id);}else{likedComments.add(id);}localStorage.setItem('lc_'+my.id,JSON.stringify([...likedComments]));const next=wasL?Math.max(0,cur-1):cur+1;el.innerHTML=`${wasL?'🤍':'❤️'} ${next}`;el.className='cmt-act'+(wasL?'':' liked');await db.from('comments').update({likes:next}).eq('id',id);}
 
-async function submitReply() {
-    const val = document.getElementById('reply-inp').value.trim();
-    if (!val) return;
-    const { error } = await db.from('comments').insert([{ post_id:curPId, author_id:my.id, author_name:my.name, content:val }]);
-    if (error) { alert('评论失败：'+error.message); return; }
-    if (curPostAuthorId && curPostAuthorId !== my.id) {
-        await db.from('notifications').insert([{ recipient_id:curPostAuthorId, type:'comment', sender_id:my.id, sender_name:my.name, post_id:curPId, message:'评论了你的帖子：'+val.slice(0,30) }]);
-        checkNotifDot();
-    }
-    document.getElementById('reply-inp').value='';
-    renderReply();
-}
+function shareComment(cid){const u=`${location.origin}${location.pathname}?post=${curPId}&comment=${cid}`;try{navigator.clipboard.writeText(u);alert('评论链接已复制！');}catch{prompt('复制链接：',u);}}
 
-// ── bootstrap ─────────────────────────────────────────
-window.onload = () => {
-    try { session = JSON.parse(localStorage.getItem('session')||'null'); } catch {}
-    if (session) launchApp();
-    else document.getElementById('auth-screen').style.display='flex';
-};
+async function submitReply(){const val=document.getElementById('reply-inp').value.trim();if(!val)return;const row={post_id:curPId,author_id:my.id,author_name:my.name,content:val,likes:0};if(replyingTo){row.parent_id=replyingTo.id;row.reply_to_name=replyingTo.name;}const{error}=await db.from('comments').insert([row]);if(error){alert('评论失败：'+error.message);return;}if(curPostAuthorId&&curPostAuthorId!==my.id)await db.from('notifications').insert([{recipient_id:curPostAuthorId,type:'comment',sender_id:my.id,sender_name:my.name,post_id:curPId,message:'评论了你的帖子：'+val.slice(0,30)}]);document.getElementById('reply-inp').value='';cancelRto();renderReply();}
+
+// ── boot ─────────────────────────────────────────────
+window.onload=()=>{try{session=JSON.parse(localStorage.getItem('session')||'null');}catch{}if(session)launchApp();else document.getElementById('auth-screen').style.display='flex';};
+
+// cover drag wiring (after DOM ready)
+document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('cover-banner');if(!b)return;b.addEventListener('mousedown',coverDown);b.addEventListener('touchstart',coverDown,{passive:false});window.addEventListener('mousemove',coverMove);window.addEventListener('touchmove',coverMove,{passive:false});window.addEventListener('mouseup',coverUp);window.addEventListener('touchend',coverUp);});
 </script>
 </body>
 </html>
