@@ -3,54 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>极简社交 V5.4 终极全能版</title>
+    <title>极简社交 V5.5</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        :root { --primary: #FF6699; --primary-bg: #fff0f5; }
         body { margin: 0; font-family: -apple-system, sans-serif; background: #fff; color: #0f1419; overflow-x: hidden; }
         .app-container { max-width: 600px; margin: 0 auto; min-height: 100vh; padding-bottom: 60px; border: 1px solid #eee; position: relative; }
         .header { padding: 15px; border-bottom: 1px solid #eee; font-size: 20px; font-weight: 800; position: sticky; top: 0; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); z-index: 10; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* 选项卡切换 */
-        .tabs { display: flex; border-bottom: 1px solid #eee; }
-        .tab { flex: 1; text-align: center; padding: 15px; font-weight: bold; color: #536471; cursor: pointer; border-bottom: 3px solid transparent; }
-        .tab.active { color: #1d9bf0; border-bottom-color: #1d9bf0; }
 
         /* 发布区 */
         .compose { padding: 15px; border-bottom: 1px solid #eee; display: flex; gap: 12px; }
         .avatar { width: 48px; height: 48px; border-radius: 50%; background: #eee; flex-shrink: 0; background-size: cover; background-position: center; }
-        .compose-main { flex: 1; }
-        .compose-input { width: 100%; border: none; outline: none; font-size: 18px; resize: none; min-height: 50px; }
+        .compose-main { flex: 1; min-width: 0; }
+        .compose-input { width: 100%; border: none; outline: none; font-size: 18px; resize: none; min-height: 50px; box-sizing: border-box; }
         .compose-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-        
-        /* 动态样式 */
+
+        /* 动态 */
         .post { border-bottom: 1px solid #eee; padding: 15px; display: flex; gap: 12px; }
+        .post-body { flex: 1; min-width: 0; }
         .post-content { font-size: 15px; line-height: 1.5; margin-top: 4px; white-space: pre-wrap; }
         .post-img { width: 100%; border-radius: 15px; margin-top: 10px; border: 1px solid #f0f0f0; }
         .post-actions { display: flex; justify-content: space-between; margin-top: 12px; max-width: 400px; color: #536471; }
-        .action { display: flex; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s; }
-        .action.liked { color: #f91880; font-weight: bold; }
+        .action { display: flex; align-items: center; gap: 5px; cursor: pointer; transition: color 0.2s; }
+        .action.liked { color: var(--primary); font-weight: bold; }
 
-        /* 个人资料与星座选择 */
+        /* 个人资料 */
         .profile-box { padding: 20px; text-align: center; border-bottom: 1px solid #eee; }
-        .meta-info { font-size: 14px; color: #1d9bf0; margin: 10px 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-        .meta-tag { background: #f0f7ff; padding: 4px 10px; border-radius: 12px; cursor: pointer; }
-        
-        /* 星座选择器菜单 */
-        .const-menu { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 1000; align-items: center; justify-content: center; }
+        .meta-info { font-size: 14px; color: var(--primary); margin: 10px 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .meta-tag { background: var(--primary-bg); padding: 4px 10px; border-radius: 12px; cursor: pointer; }
+
+        /* 弹出菜单 */
+        .popup-menu { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 1000; align-items: center; justify-content: center; }
         .menu-content { background: #fff; width: 80%; max-width: 300px; border-radius: 15px; overflow: hidden; }
+        .menu-section-label { padding: 8px 15px; font-size: 12px; color: #999; background: #f9f9f9; text-align: left; }
         .menu-item { padding: 15px; text-align: center; border-bottom: 1px solid #eee; cursor: pointer; }
-        .menu-item:hover { background: #f7f9f9; }
+        .menu-item:hover { background: var(--primary-bg); }
+        .menu-item.cancel { color: var(--primary); font-weight: bold; border-bottom: none; }
 
         /* 底部导航 */
         .bottom-nav { position: fixed; bottom: 0; width: 100%; max-width: 600px; display: flex; background: #fff; border-top: 1px solid #eee; height: 55px; }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 22px; color: #536471; }
-        .nav-item.active { color: #1d9bf0; }
+        .nav-item { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #b0b8c1; transition: color 0.2s; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item svg { width: 26px; height: 26px; fill: currentColor; }
+
+        /* 按钮 */
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        .btn-ghost { background: #fff; border: 1px solid #ddd; padding: 6px 15px; border-radius: 20px; cursor: pointer; }
+        .btn-block { width: 100%; background: #111; color: #fff; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; }
 
         .view { display: none; }
         .view.active { display: block; }
-        
+        .empty-tip { padding: 40px; text-align: center; color: #aaa; font-size: 15px; }
+
+        /* 回复弹窗 */
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 200; align-items: flex-end; }
         .modal-body { background: #fff; width: 100%; max-width: 600px; height: 80vh; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; margin: 0 auto; }
+        .modal-header { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-compose { display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-top: 1px solid #eee; }
+        .modal-compose textarea { flex: 1; font-size: 16px; border: none; outline: none; resize: none; min-height: 36px; }
     </style>
 </head>
 <body>
@@ -58,65 +68,91 @@
 <div class="app-container">
     <div class="header"><span id="title">首页</span></div>
 
+    <!-- 首页：全部动态 -->
     <div id="v-home" class="view active">
-        <div class="tabs">
-            <div class="tab active" onclick="setFeed('all')">推荐</div>
-            <div class="tab" onclick="setFeed('follow')">关注</div>
-        </div>
         <div class="compose">
             <div class="avatar" id="my-avatar-top"></div>
             <div class="compose-main">
                 <textarea id="inp-text" class="compose-input" placeholder="有什么新鲜事？"></textarea>
                 <img id="pre-post" style="display:none; width:100%; border-radius:15px; margin:10px 0;">
                 <div class="compose-tools">
-                    <span onclick="document.getElementById('f-post').click()" style="cursor:pointer; font-size:20px;">🖼️</span>
-                    <input type="file" id="f-post" hidden onchange="handleFile(event, 'pre-post')">
-                    <button onclick="publish()" style="background:#1d9bf0; color:#fff; border:none; padding:8px 18px; border-radius:20px; font-weight:bold; cursor:pointer;">发布</button>
+                    <span onclick="document.getElementById('f-post').click()" style="cursor:pointer; font-size:22px; color:#aaa;">
+                        <!-- 图片图标 -->
+                        <svg style="width:22px;height:22px;fill:#aaa;vertical-align:middle" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                    </span>
+                    <input type="file" id="f-post" accept="image/*" hidden onchange="handleFile(event, 'pre-post')">
+                    <button class="btn-primary" onclick="publish()">发布</button>
                 </div>
             </div>
         </div>
         <div id="list-all"></div>
     </div>
 
-    <div id="v-msg" class="view">
-        <div style="padding:15px; border-bottom:1px solid #f7f7f7">🔔 欢迎使用极简社交！</div>
-        <div style="padding:15px; border-bottom:1px solid #f7f7f7">❤️ 有人悄悄点赞了你的动态</div>
-        <div style="padding:15px; border-bottom:1px solid #f7f7f7">💬 您收到一条新的评论回复</div>
+    <!-- 动态页：关注的人 -->
+    <div id="v-follow" class="view">
+        <div id="list-follow"></div>
     </div>
 
+    <!-- 通知页 -->
+    <div id="v-msg" class="view">
+        <div style="padding:15px; border-bottom:1px solid #f7f7f7; display:flex; gap:12px; align-items:center">
+            <span style="font-size:22px">🔔</span><span>欢迎使用极简社交！</span>
+        </div>
+        <div style="padding:15px; border-bottom:1px solid #f7f7f7; display:flex; gap:12px; align-items:center">
+            <span style="font-size:22px; color:var(--primary)">❤️</span><span>有人悄悄点赞了你的动态</span>
+        </div>
+        <div style="padding:15px; border-bottom:1px solid #f7f7f7; display:flex; gap:12px; align-items:center">
+            <span style="font-size:22px">💬</span><span>您收到一条新的评论回复</span>
+        </div>
+    </div>
+
+    <!-- 个人主页 -->
     <div id="v-me" class="view">
         <div class="profile-box">
-            <div class="avatar" style="width:80px; height:80px; margin:0 auto;"></div>
-            <h2 id="p-name">加载中...</h2>
-            <div id="p-bio">简介加载中</div>
+            <div class="avatar" style="width:80px; height:80px; margin:0 auto; background: var(--primary-bg);"></div>
+            <h2 id="p-name" style="margin:10px 0 4px;">加载中...</h2>
+            <div id="p-bio" style="color:#536471; font-size:14px;">简介加载中</div>
             <div class="meta-info">
-                <span class="meta-tag" id="p-reg">📍 未知</span>
+                <span class="meta-tag" onclick="openCityMenu()" id="p-city">📍 点击选城市</span>
                 <span class="meta-tag" onclick="openConstMenu()" id="p-const">✨ 点击选星座</span>
                 <span class="meta-tag" id="p-birth">🎂 生日未设</span>
             </div>
-            <button onclick="document.getElementById('edit-panel').style.display='block'" style="background:#fff; border:1px solid #ddd; padding:6px 15px; border-radius:20px;">编辑资料</button>
+            <button class="btn-ghost" onclick="openEditPanel()">编辑资料</button>
 
-            <div id="edit-panel" style="display:none; text-align:left; background:#f9f9f9; padding:15px; border-radius:10px; margin-top:15px;">
-                <input id="i-name" placeholder="名字" style="width:100%; padding:10px; margin-bottom:10px;">
-                <input id="i-reg" placeholder="地区" style="width:100%; padding:10px; margin-bottom:10px;">
-                <input id="i-birth" type="date" style="width:100%; padding:10px; margin-bottom:10px;">
-                <textarea id="i-bio" placeholder="个人简介" style="width:100%; padding:10px; margin-bottom:10px;"></textarea>
-                <button onclick="saveProfile()" style="width:100%; background:#000; color:#fff; padding:10px; border:none; border-radius:5px;">保存信息</button>
+            <div id="edit-panel" style="display:none; text-align:left; background:#f9f9f9; padding:15px; border-radius:12px; margin-top:15px;">
+                <input id="i-name" placeholder="名字" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #eee; border-radius:8px; box-sizing:border-box; font-size:15px;">
+                <input id="i-birth" type="date" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #eee; border-radius:8px; box-sizing:border-box; font-size:15px;">
+                <textarea id="i-bio" placeholder="个人简介" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #eee; border-radius:8px; box-sizing:border-box; font-size:15px; resize:none; min-height:70px;"></textarea>
+                <button class="btn-block" onclick="saveProfile()">保存信息</button>
             </div>
         </div>
         <div id="list-mine"></div>
     </div>
 
+    <!-- 底部导航 -->
     <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchNav('home')">🏠</div>
-        <div class="nav-item" onclick="switchNav('home', 'follow')">👥</div>
-        <div class="nav-item" onclick="switchNav('msg')">🔔</div>
-        <div class="nav-item" onclick="switchNav('me')">👤</div>
+        <div class="nav-item active" id="nav-home" onclick="switchNav('home')">
+            <!-- 首页 -->
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        </div>
+        <div class="nav-item" id="nav-follow" onclick="switchNav('follow')">
+            <!-- 动态/关注 -->
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </div>
+        <div class="nav-item" id="nav-msg" onclick="switchNav('msg')">
+            <!-- 通知 -->
+            <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        </div>
+        <div class="nav-item" id="nav-me" onclick="switchNav('me')">
+            <!-- 个人 -->
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
     </div>
 </div>
 
-<div class="const-menu" id="const-menu">
-    <div class="menu-content">
+<!-- 星座选择菜单 -->
+<div class="popup-menu" id="const-menu" onclick="closeConstMenu()">
+    <div class="menu-content" onclick="event.stopPropagation()">
         <div style="padding:15px; font-weight:bold; border-bottom:1px solid #eee; text-align:center;">选择你的星座</div>
         <div style="max-height:300px; overflow-y:auto;">
             <div class="menu-item" onclick="selectConst('白羊座')">♈ 白羊座</div>
@@ -132,21 +168,43 @@
             <div class="menu-item" onclick="selectConst('水瓶座')">♒ 水瓶座</div>
             <div class="menu-item" onclick="selectConst('双鱼座')">♓ 双鱼座</div>
         </div>
-        <div class="menu-item" style="color:red; font-weight:bold;" onclick="closeConstMenu()">取消</div>
+        <div class="menu-item cancel" onclick="closeConstMenu()">取消</div>
     </div>
 </div>
 
+<!-- 国家/城市选择菜单 -->
+<div class="popup-menu" id="city-menu" onclick="closeCityMenu()">
+    <div class="menu-content" onclick="event.stopPropagation()">
+        <div style="padding:15px; font-weight:bold; border-bottom:1px solid #eee; text-align:center;">选择你的城市</div>
+        <div style="max-height:350px; overflow-y:auto;">
+            <div class="menu-section-label">🇨🇳 中国</div>
+            <div class="menu-item" onclick="selectCity('北京')">🏙️ 北京</div>
+            <div class="menu-item" onclick="selectCity('上海')">🌆 上海</div>
+            <div class="menu-item" onclick="selectCity('广州')">🌇 广州</div>
+            <div class="menu-item" onclick="selectCity('深圳')">🏗️ 深圳</div>
+            <div class="menu-item" onclick="selectCity('杭州')">🌉 杭州</div>
+            <div class="menu-item" onclick="selectCity('成都')">🐼 成都</div>
+            <div class="menu-section-label">🌏 海外</div>
+            <div class="menu-item" onclick="selectCity('东京')">🗼 东京</div>
+            <div class="menu-item" onclick="selectCity('纽约')">🗽 纽约</div>
+            <div class="menu-item" onclick="selectCity('伦敦')">🎡 伦敦</div>
+        </div>
+        <div class="menu-item cancel" onclick="closeCityMenu()">取消</div>
+    </div>
+</div>
+
+<!-- 回复弹窗 -->
 <div class="modal" id="modal-reply">
     <div class="modal-body">
-        <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between">
-            <span onclick="closeReply()" style="cursor:pointer">取消</span>
+        <div class="modal-header">
+            <span onclick="closeReply()" style="cursor:pointer; color:#536471;">取消</span>
             <strong>发布回复</strong>
             <span></span>
         </div>
         <div id="reply-list" style="flex:1; overflow-y:auto; padding:15px;"></div>
-        <div class="compose" style="border-top:1px solid #eee">
-            <textarea id="reply-inp" placeholder="发布你的回复" style="font-size:16px"></textarea>
-            <button onclick="submitReply()" style="background:#1d9bf0; color:#fff; border:none; padding:5px 15px; border-radius:20px">回复</button>
+        <div class="modal-compose">
+            <textarea id="reply-inp" placeholder="发布你的回复"></textarea>
+            <button class="btn-primary" onclick="submitReply()">回复</button>
         </div>
     </div>
 </div>
@@ -156,43 +214,61 @@
     const ANON_KEY = 'sb_publishable_9Kow0JDI_jpqiWm4ne5Zjg_HlDA3wr8';
     const db = supabase.createClient(PROJECT_URL, ANON_KEY);
 
-    let my = { id:'me', name:'探索者', bio:'', region:'中国', constellation:'', birthday:'' };
-    let postImg = "";
+    let my = { id: 'me', name: '探索者', bio: '', region: '', constellation: '', birthday: '', city: '' };
+    let postImg = '';
     let curPId = null;
 
     async function init() {
         const { data } = await db.from('profiles').select('*').eq('id', 'me').single();
-        if(data) { my = data; renderProfile(); }
+        if (data) { my = data; renderProfile(); }
         loadFeed('all');
     }
 
     function renderProfile() {
-        document.getElementById('p-name').innerText = my.name;
-        document.getElementById('p-bio').innerText = my.bio || "暂无个人简介";
-        document.getElementById('p-reg').innerText = "📍 " + (my.region || "地区");
-        document.getElementById('p-const').innerText = "✨ " + (my.constellation || "点击选星座");
-        document.getElementById('p-birth').innerText = "🎂 " + (my.birthday || "生日未设");
+        document.getElementById('p-name').innerText = my.name || '探索者';
+        document.getElementById('p-bio').innerText = my.bio || '暂无个人简介';
+        document.getElementById('p-city').innerText = '📍 ' + (my.city || my.region || '点击选城市');
+        document.getElementById('p-const').innerText = '✨ ' + (my.constellation || '点击选星座');
+        document.getElementById('p-birth').innerText = '🎂 ' + (my.birthday || '生日未设');
+    }
+
+    function openEditPanel() {
+        document.getElementById('i-name').value = my.name || '';
+        document.getElementById('i-birth').value = my.birthday || '';
+        document.getElementById('i-bio').value = my.bio || '';
+        document.getElementById('edit-panel').style.display = 'block';
+    }
+
+    function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     async function loadFeed(type) {
-        let q = db.from('posts').select('*').order('created_at', {ascending:false});
-        if(type === 'follow') q = q.eq('author_id', 'me'); // 模拟关注：显示自己的
-        
+        let q = db.from('posts').select('*').order('created_at', { ascending: false });
+        if (type === 'follow' || type === 'me') q = q.eq('author_id', 'me');
+
         const { data: posts } = await q;
         const { data: comms } = await db.from('comments').select('post_id');
-        
-        const container = type === 'me' ? document.getElementById('list-mine') : document.getElementById('list-all');
+
+        const containerId = type === 'me' ? 'list-mine' : type === 'follow' ? 'list-follow' : 'list-all';
+        const container = document.getElementById(containerId);
+
+        if (!posts || posts.length === 0) {
+            container.innerHTML = '<div class="empty-tip">暂无内容</div>';
+            return;
+        }
+
         container.innerHTML = posts.map(p => {
-            const cCount = comms.filter(c => c.post_id === p.id).length;
+            const cCount = comms ? comms.filter(c => c.post_id === p.id).length : 0;
             return `
                 <div class="post">
                     <div class="avatar"></div>
                     <div class="post-body">
-                        <div style="font-weight:800">${p.author_name}</div>
-                        <div class="post-content">${p.content}</div>
-                        ${p.image_url ? `<img src="${p.image_url}" class="post-img">`:''}
+                        <div style="font-weight:800">${escapeHtml(p.author_name)}</div>
+                        <div class="post-content">${escapeHtml(p.content)}</div>
+                        ${p.image_url ? `<img src="${p.image_url}" class="post-img">` : ''}
                         <div class="post-actions">
-                            <div class="action" onclick="like(${p.id}, ${p.likes}, this)">❤️ <span>${p.likes}</span></div>
+                            <div class="action" data-id="${p.id}" data-likes="${p.likes}" onclick="like(this)">❤️ <span>${p.likes}</span></div>
                             <div class="action" onclick="openReply(${p.id})">💬 <span>${cCount}</span></div>
                             <div class="action" onclick="alert('已转发')">🔄</div>
                             <div class="action">📤</div>
@@ -203,92 +279,104 @@
         }).join('');
     }
 
-    async function like(id, cur, el) {
+    async function like(el) {
         el.classList.toggle('liked');
         const isAdd = el.classList.contains('liked');
+        const id = Number(el.dataset.id);
+        const cur = Number(el.dataset.likes);
         const next = isAdd ? cur + 1 : Math.max(0, cur - 1);
         el.querySelector('span').innerText = next;
+        el.dataset.likes = next;
         await db.from('posts').update({ likes: next }).eq('id', id);
     }
 
     async function publish() {
-        const txt = document.getElementById('inp-text').value;
-        if(!txt && !postImg) return;
-        await db.from('posts').insert([{ author_id:'me', author_name:my.name, content:txt, image_url:postImg, likes:0 }]);
+        const txt = document.getElementById('inp-text').value.trim();
+        if (!txt && !postImg) return;
+        await db.from('posts').insert([{ author_id: 'me', author_name: my.name, content: txt, image_url: postImg, likes: 0 }]);
         location.reload();
     }
 
     async function saveProfile() {
         const up = {
             id: 'me',
-            name: document.getElementById('i-name').value,
-            region: document.getElementById('i-reg').value,
+            name: document.getElementById('i-name').value.trim() || my.name,
             birthday: document.getElementById('i-birth').value,
-            bio: document.getElementById('i-bio').value
+            bio: document.getElementById('i-bio').value.trim()
         };
         await db.from('profiles').upsert([up]);
-        my = {...my, ...up};
+        my = { ...my, ...up };
         renderProfile();
-        document.getElementById('edit-panel').style.display='none';
+        document.getElementById('edit-panel').style.display = 'none';
     }
 
-    // --- 星座二级菜单功能 ---
-    function openConstMenu() { document.getElementById('const-menu').style.display='flex'; }
-    function closeConstMenu() { document.getElementById('const-menu').style.display='none'; }
+    // 星座
+    function openConstMenu() { document.getElementById('const-menu').style.display = 'flex'; }
+    function closeConstMenu() { document.getElementById('const-menu').style.display = 'none'; }
     async function selectConst(name) {
-        await db.from('profiles').upsert([{ id:'me', constellation: name }]);
+        await db.from('profiles').upsert([{ id: 'me', constellation: name }]);
         my.constellation = name;
         renderProfile();
         closeConstMenu();
     }
 
-    function switchNav(v, subType) {
-        document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-        document.getElementById('v-'+v).classList.add('active');
-        
-        if(v === 'home') {
-            document.getElementById('title').innerText = '首页';
-            setFeed(subType || 'all');
-        } else {
-            document.getElementById('title').innerText = v === 'msg' ? '通知' : '个人主页';
-            if(v === 'me') loadFeed('me');
-        }
+    // 城市
+    function openCityMenu() { document.getElementById('city-menu').style.display = 'flex'; }
+    function closeCityMenu() { document.getElementById('city-menu').style.display = 'none'; }
+    async function selectCity(name) {
+        await db.from('profiles').upsert([{ id: 'me', city: name }]);
+        my.city = name;
+        renderProfile();
+        closeCityMenu();
     }
 
-    function setFeed(type) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        if(type === 'follow') document.querySelectorAll('.tab')[1].classList.add('active');
-        else document.querySelectorAll('.tab')[0].classList.add('active');
-        loadFeed(type);
+    function switchNav(v) {
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        const viewMap = { home: 'v-home', follow: 'v-follow', msg: 'v-msg', me: 'v-me' };
+        const titleMap = { home: '首页', follow: '动态', msg: '通知', me: '个人主页' };
+        document.getElementById(viewMap[v]).classList.add('active');
+        document.getElementById('nav-' + v).classList.add('active');
+        document.getElementById('title').innerText = titleMap[v];
+        if (v === 'follow') loadFeed('follow');
+        if (v === 'me') loadFeed('me');
     }
 
     function handleFile(e, preId) {
         const r = new FileReader();
-        r.onload = (ev) => {
+        r.onload = ev => {
             postImg = ev.target.result;
-            document.getElementById(preId).src = postImg;
-            document.getElementById(preId).style.display = 'block';
+            const img = document.getElementById(preId);
+            img.src = postImg;
+            img.style.display = 'block';
         };
         r.readAsDataURL(e.target.files[0]);
     }
 
-    function openReply(id) { curPId = id; document.getElementById('modal-reply').style.display='flex'; renderReply(); }
-    function closeReply() { document.getElementById('modal-reply').style.display='none'; }
-    async function renderReply() {
-        const { data } = await db.from('comments').select('*').eq('post_id', curPId);
-        document.getElementById('reply-list').innerHTML = data.map(c => `
-            <div style="margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px">
-                <div style="font-weight:bold; font-size:14px">${c.author_name}</div>
-                <div style="font-size:14px">${c.content}</div>
-            </div>
-        `).join('');
+    function openReply(id) {
+        curPId = id;
+        document.getElementById('modal-reply').style.display = 'flex';
+        renderReply();
     }
+    function closeReply() { document.getElementById('modal-reply').style.display = 'none'; }
+
+    async function renderReply() {
+        const { data } = await db.from('comments').select('*').eq('post_id', curPId).order('created_at', { ascending: true });
+        const list = data || [];
+        document.getElementById('reply-list').innerHTML = list.length
+            ? list.map(c => `
+                <div style="margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px">
+                    <div style="font-weight:bold; font-size:14px">${escapeHtml(c.author_name)}</div>
+                    <div style="font-size:14px; margin-top:4px">${escapeHtml(c.content)}</div>
+                </div>`).join('')
+            : '<div class="empty-tip">还没有评论，来说第一句话吧</div>';
+    }
+
     async function submitReply() {
-        const val = document.getElementById('reply-inp').value;
-        if(!val) return;
-        await db.from('comments').insert([{ post_id: curPId, author_id:'me', author_name:my.name, content:val }]);
-        document.getElementById('reply-inp').value = "";
+        const val = document.getElementById('reply-inp').value.trim();
+        if (!val) return;
+        await db.from('comments').insert([{ post_id: curPId, author_id: 'me', author_name: my.name, content: val }]);
+        document.getElementById('reply-inp').value = '';
         renderReply();
     }
 
