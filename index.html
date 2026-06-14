@@ -153,7 +153,8 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:200;align-items:flex-end;}
 .mbody{background:var(--card);width:100%;max-width:600px;height:82vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;margin:0 auto;transition:background .4s ease;}
 .mhdr{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
-.mc{display:flex;align-items:center;gap:8px;padding:10px 15px;border-top:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;}
+.mc{display:flex;align-items:flex-start;gap:8px;padding:10px 15px;border-top:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;}
+.mc>span{padding-top:8px;}
 .mc textarea{flex:1;font-size:15px;border:none;outline:none;resize:none;min-height:36px;max-height:100px;background:transparent;color:var(--text);}
 
 .fullscreen{display:none;position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);background:var(--bg);z-index:150;width:100%;max-width:600px;overflow-y:auto;padding-bottom:60px;transition:background .4s ease;}
@@ -177,8 +178,8 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
 .dm-unread{background:var(--pk);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;margin-left:auto;flex-shrink:0;}
 .ndot{background:var(--pk)!important;}
 
-#crop-overlay{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:rgba(0,0,0,.75);z-index:500;display:none;flex-direction:column;backdrop-filter:blur(8px);}
-.crop-frame{overflow:hidden;position:relative;cursor:grab;touch-action:none;flex-shrink:0;border:3px solid var(--pk);box-shadow:0 0 0 9999px rgba(0,0,0,.35);}
+#crop-overlay{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:rgba(0,0,0,.45);z-index:500;display:none;flex-direction:column;backdrop-filter:blur(12px);}
+.crop-frame{overflow:hidden;position:relative;cursor:grab;touch-action:none;flex-shrink:0;border:3px solid var(--pk);box-shadow:0 0 0 9999px rgba(0,0,0,.2);}
 .crop-bg{position:absolute;inset:0;background-size:100%;background-repeat:no-repeat;background-position:50% 50%;}
 
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:600;display:none;flex-direction:column;align-items:center;justify-content:center;}
@@ -394,6 +395,11 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
   <div class="dark-toggle" onclick="toggleDark()" style="border-bottom:1px solid var(--border);">
     <span style="font-size:15px;">深色模式</span>
     <div class="toggle-track" id="dark-track"><div class="toggle-knob"></div></div>
+  </div>
+  <div id="suggest-entry" style="display:none;padding:16px 20px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:14px;margin-bottom:8px;color:var(--text2);">向管理员反馈建议</div>
+    <textarea id="suggest-inp" class="ef" placeholder="写下你的建议或反馈…"></textarea>
+    <button class="btn-pk" style="width:100%;" onclick="sendSuggestion()">提交建议</button>
   </div>
   <div id="admin-entry" style="display:none;">
     <div class="set-row" onclick="openAdmin()" style="color:var(--pk);font-weight:bold;">
@@ -657,6 +663,7 @@ function openSettings(){
   document.getElementById('i-name').value=my.name||'';document.getElementById('i-bio').value=my.bio||'';
   updateSettingsVals();
   const ae=document.getElementById('admin-entry');if(ae)ae.style.display=my.id===ADMIN_ID?'block':'none';
+  const se=document.getElementById('suggest-entry');if(se)se.style.display=my.id!==ADMIN_ID?'block':'none';
   document.getElementById('v-settings').style.display='block';document.body.style.overflow='hidden';
 }
 function closeSettings(){document.getElementById('v-settings').style.display='none';document.body.style.overflow='';}
@@ -705,7 +712,7 @@ function postCard(p,cc){
   return`<div class="post" id="post-${p.id}">
 <div class="av" style="width:46px;height:46px;cursor:pointer;${avS}" onclick="openUser('${esc(p.author_id)}','${esc(dName)}')">${esc(avC)}</div>
 <div class="pb">
-  <span class="pauth" onclick="openUser('${esc(p.author_id)}','${esc(dName)}')">${esc(dName)}</span>${dLoc?`<span class="ploc">${esc(dLoc)}</span>`:''}
+  <div style="display:flex;justify-content:space-between;align-items:center;"><span class="pauth" onclick="openUser('${esc(p.author_id)}','${esc(dName)}')">${esc(dName)}</span><span style="font-size:12px;color:#bbb;flex-shrink:0;">${fmtTime(p.created_at)}</span></div>${dLoc?`<span class="ploc">${esc(dLoc)}</span>`:''}
   <div class="ptxt">${esc(p.content)}</div>
   ${renderImgs(p.image_url)}
   <div class="pacts">
@@ -806,7 +813,7 @@ async function loadDmList(){
   if(!data||!data.length){cont.innerHTML='<div class="empty">暂无私信</div>';return;}
   const conv={};
   data.forEach(m=>{const oid=m.sender_id===my.id?m.recipient_id:m.sender_id;const on=m.sender_id===my.id?m.recipient_name:m.sender_name;if(!conv[oid])conv[oid]={id:oid,name:on||oid,last:m,unread:0};if(!m.is_read&&m.recipient_id===my.id)conv[oid].unread++;});
-  cont.innerHTML=Object.values(conv).map(c=>`<div class="dm-row" onclick="openChat('${esc(c.id)}','${esc(c.name)}')"><div class="av" style="width:46px;height:46px;font-size:17px;background:${avc(c.name)};">${esc((c.name||'?')[0])}</div><div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:15px;">${esc(c.name)}</div><div class="dm-preview">${esc(c.last.content||'[图片]')}</div></div>${c.unread>0?`<div class="dm-unread">${c.unread}</div>`:''}</div>`).join('');
+  cont.innerHTML=Object.values(conv).map(c=>`<div class="dm-row" onclick="openChat('${esc(c.id)}','${esc(c.name)}')"><div class="av" style="width:46px;height:46px;font-size:17px;background:${avc(c.name)};">${esc((c.name||'?')[0])}</div><div style="flex:1;min-width:0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:bold;font-size:15px;">${esc(c.name)}</span><span style="font-size:11px;color:#bbb;flex-shrink:0;">${fmtTime(c.last.created_at)}</span></div><div class="dm-preview">${esc(c.last.content||'[图片]')}</div></div>${c.unread>0?`<div class="dm-unread">${c.unread}</div>`:''}</div>`).join('');
 }
 
 // ── chat (max 9 images) ──────────────────────────────
@@ -912,104 +919,172 @@ function switchAdminTab(tab){
   if(tab==='reports')loadAdminReports();
   if(tab==='dashboard')loadAdminDashboard();
 }
+
+// ── 内容管理 ──
 async function loadAdminContent(){
   const cont=document.getElementById('admin-content');
   cont.innerHTML='<div class="empty">加载中…</div>';
   const[{data:posts},{data:comments}]=await Promise.all([
-    db.from('posts').select('*').order('created_at',{ascending:false}).limit(50),
-    db.from('comments').select('*').order('created_at',{ascending:false}).limit(50)
+    db.from('posts').select('*').order('created_at',{ascending:false}).limit(100),
+    db.from('comments').select('*').order('created_at',{ascending:true})
   ]);
-  let html='<div style="padding:12px 16px;font-weight:bold;font-size:16px;border-bottom:1px solid var(--border);">帖子管理</div>';
-  if(posts&&posts.length){
-    html+=posts.map(p=>`<div class="admin-user-row" style="flex-wrap:wrap;">
-      <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(p.author_name)}</div><div style="font-size:13px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.content||'[图片]')}</div><div style="font-size:11px;color:#bbb;margin-top:2px;">${fmtTime(p.created_at)}</div></div>
-      <div class="admin-actions"><button class="admin-btn danger" onclick="adminDelPost(${p.id})">删除</button></div>
-    </div>`).join('');
-  }else html+='<div class="empty">暂无帖子</div>';
-  html+='<div style="padding:12px 16px;font-weight:bold;font-size:16px;border-bottom:1px solid var(--border);border-top:1px solid var(--border);margin-top:8px;">评论管理</div>';
-  if(comments&&comments.length){
-    html+=comments.map(c=>`<div class="admin-user-row">
-      <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(c.author_name)}</div><div style="font-size:13px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</div><div style="font-size:11px;color:#bbb;margin-top:2px;">${fmtTime(c.created_at)}</div></div>
-      <div class="admin-actions"><button class="admin-btn danger" onclick="adminDelComment(${c.id})">删除</button></div>
-    </div>`).join('');
-  }else html+='<div class="empty">暂无评论</div>';
-  cont.innerHTML=html;
+  await fetchProfiles((posts||[]).map(p=>p.author_id).concat((comments||[]).map(c=>c.author_id)));
+  const cmtMap={};(comments||[]).forEach(c=>{if(!cmtMap[c.post_id])cmtMap[c.post_id]=[];cmtMap[c.post_id].push(c);});
+  if(!posts||!posts.length){cont.innerHTML='<div class="empty">暂无帖子</div>';return;}
+  function avHtml(uid,fallback,size){const p=getProfile(uid);const n=p?p.name:fallback;const av=p?p.avatar_url:'';const s=av?`background-image:url('${av}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(n)};font-size:${Math.round(size*.38)}px;`;return`<div class="av" style="width:${size}px;height:${size}px;flex-shrink:0;cursor:pointer;${s}" onclick="closeAdmin();openUser('${esc(uid)}','${esc(n)}')">${av?'':esc((n||'?')[0])}</div>`;}
+  cont.innerHTML=posts.map(p=>{
+    const prof=getProfile(p.author_id);const dName=prof?prof.name:p.author_name;
+    const cmts=cmtMap[p.id]||[];
+    return`<div style="border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:4px;">
+      <div class="admin-user-row">${avHtml(p.author_id,p.author_name,38)}<div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(dName)}</div><div style="font-size:13px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.content||'[图片]')}</div><div style="font-size:11px;color:#bbb;margin-top:2px;">${fmtTime(p.created_at)} · 赞${p.likes||0}</div></div><div class="admin-actions"><button class="admin-btn danger" onclick="adminDelPost(${p.id})">删除帖子</button></div></div>
+      ${cmts.length?`<div style="margin-left:50px;border-left:2px solid var(--border);padding-left:10px;">${cmts.map(c=>{const cp=getProfile(c.author_id);const cn=cp?cp.name:c.author_name;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);">${avHtml(c.author_id,c.author_name,26)}<div style="flex:1;min-width:0;font-size:13px;"><strong>${esc(cn)}</strong>: ${esc(c.content)} <span style="color:#bbb;font-size:11px;">${fmtTime(c.created_at)}</span></div><button class="admin-btn danger" style="font-size:11px;padding:2px 6px;" onclick="adminDelComment(${c.id})">删</button></div>`;}).join('')}</div>`:''}</div>`;
+  }).join('');
 }
 async function adminDelPost(id){if(!confirm('管理员删除此帖？'))return;await db.from('comments').delete().eq('post_id',id);await db.from('posts').delete().eq('id',id);loadAdminContent();loadFeed('all');}
 async function adminDelComment(id){if(!confirm('管理员删除此评论？'))return;await db.from('comments').delete().eq('id',id);loadAdminContent();}
 
+// ── 用户管理 ──
 async function loadAdminUsers(){
   const cont=document.getElementById('admin-users');
   cont.innerHTML='<div class="empty">加载中…</div>';
-  const{data:users}=await db.from('profiles').select('*').order('username');
+  const{data:users}=await db.from('profiles').select('*').order('created_at',{ascending:false});
   if(!users||!users.length){cont.innerHTML='<div class="empty">暂无用户</div>';return;}
   cont.innerHTML='<div style="padding:12px 16px;font-weight:bold;font-size:16px;border-bottom:1px solid var(--border);">全部用户（'+users.length+'）</div>'+
     users.map(u=>{
       const avS=u.avatar_url?`background-image:url('${u.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(u.name||u.username)};font-size:14px;`;
       const avC=u.avatar_url?'':(u.name||u.username||'?')[0];
+      const regTime=u.created_at?new Date(u.created_at).toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'未知';
       return`<div class="admin-user-row">
-        <div class="av" style="width:40px;height:40px;flex-shrink:0;${avS}">${esc(avC)}</div>
-        <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(u.name||u.username)} <span style="color:#bbb;font-weight:normal;">@${esc(u.username)}</span></div><div style="font-size:12px;color:var(--text2);">${esc(u.region||'')} · ${esc(u.bio||'').slice(0,30)}</div></div>
+        <div class="av" style="width:40px;height:40px;flex-shrink:0;cursor:pointer;${avS}" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(u.name||u.username)}')">${esc(avC)}</div>
+        <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(u.name||u.username)} <span style="color:#bbb;font-weight:normal;">@${esc(u.username)}</span>${u.id===ADMIN_ID?'<span style="background:var(--pk);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:4px;">管理员</span>':''}</div><div style="font-size:12px;color:var(--text2);">${esc(u.region||'未设置地区')} · 注册于 ${regTime}</div></div>
         <div class="admin-actions">
-          <button class="admin-btn" onclick="adminResetProfile('${esc(u.id)}')">重置资料</button>
-          <button class="admin-btn danger" onclick="adminBanUser('${esc(u.id)}','${esc(u.name)}')">封禁</button>
+          ${u.id!==ADMIN_ID?`<button class="admin-btn" onclick="adminResetProfile('${esc(u.id)}')">重置</button><button class="admin-btn danger" onclick="adminBanUser('${esc(u.id)}','${esc(u.name||u.username)}')">封禁</button>`:''}
         </div>
       </div>`;}).join('');
 }
-async function adminResetProfile(uid){if(!confirm('重置该用户的头像和简介？'))return;await db.from('profiles').update({avatar_url:'',bio:'',name:uid}).eq('id',uid);alert('已重置');loadAdminUsers();}
-async function adminBanUser(uid,name){if(uid===ADMIN_ID){alert('无法封禁管理员');return;}if(!confirm(`封禁用户 ${name}？将删除其所有帖子和评论。`))return;await db.from('comments').delete().eq('author_id',uid);await db.from('posts').delete().eq('author_id',uid);await db.from('profiles').delete().eq('id',uid);alert('已封禁并清除数据');loadAdminUsers();}
+async function adminResetProfile(uid){if(!confirm('重置该用户所有信息？头像、昵称、简介、地区、星座、生日将全部归零。'))return;await db.from('profiles').update({avatar_url:'',bio:'',name:uid,region:'',constellation:'',birthday:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100}).eq('id',uid);alert('已重置全部资料');loadAdminUsers();}
+async function adminBanUser(uid,name){if(uid===ADMIN_ID){alert('无法封禁管理员');return;}if(!confirm(`封禁用户 ${name}？\n该账号将被永久删除，包括所有帖子、评论和私信。此操作不可逆。`))return;await Promise.all([db.from('comments').delete().eq('author_id',uid),db.from('posts').delete().eq('author_id',uid),db.from('messages').delete().or(`sender_id.eq.${uid},recipient_id.eq.${uid}`),db.from('notifications').delete().or(`sender_id.eq.${uid},recipient_id.eq.${uid}`)]);await db.from('profiles').delete().eq('id',uid);alert('已封禁并永久删除');loadAdminUsers();}
 
+// ── 举报与互动 ──
 async function loadAdminReports(){
   const cont=document.getElementById('admin-reports');
-  cont.innerHTML=`<div style="padding:16px;">
-    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">全站广播</div>
+  const{data:suggestions}=await db.from('messages').select('*').eq('recipient_id',ADMIN_ID).order('created_at',{ascending:false}).limit(50);
+  const sgHtml=(suggestions&&suggestions.length)?suggestions.filter(s=>s.content&&s.content.startsWith('[建议]')).map(s=>`<div style="padding:10px 0;border-bottom:1px solid var(--border2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;"><strong style="font-size:14px;">${esc(s.sender_name)}</strong><span style="font-size:11px;color:#bbb;">${fmtTime(s.created_at)}</span></div>
+    <div style="font-size:13px;margin-top:4px;">${esc(s.content.replace('[建议] ',''))}</div>
+    <div style="margin-top:6px;"><button class="admin-btn" onclick="replySuggestion('${esc(s.sender_id)}','${esc(s.sender_name)}')">回复</button></div>
+  </div>`).join(''):'<div class="empty">暂无建议</div>';
+  cont.innerHTML=`
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">📢 全站公告</div>
     <textarea id="admin-broadcast" class="ef" placeholder="输入公告内容，将通知所有用户…"></textarea>
-    <button class="btn-pk" style="width:100%;" onclick="sendBroadcast()">发送全站通知</button>
+    <button class="btn-pk" style="width:100%;" onclick="sendBroadcast()">发送公告</button>
   </div>
-  <div style="padding:0 16px 16px;">
-    <div style="font-weight:bold;font-size:16px;margin-bottom:8px;">操作日志</div>
-    <div id="admin-log" class="empty">暂无举报</div>
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">📊 全站投票</div>
+    <input id="vote-title" class="ef" placeholder="投票标题">
+    <input id="vote-a" class="ef" placeholder="选项 A">
+    <input id="vote-b" class="ef" placeholder="选项 B">
+    <input id="vote-c" class="ef" placeholder="选项 C（可选）">
+    <button class="btn-pk" style="width:100%;" onclick="sendVote()">发起投票</button>
+  </div>
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">❓ 全站问答</div>
+    <textarea id="qa-content" class="ef" placeholder="输入问题，将以帖子形式发布…"></textarea>
+    <button class="btn-pk" style="width:100%;" onclick="sendQA()">发布问答</button>
+  </div>
+  <div style="padding:16px;">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">💡 用户建议（${suggestions?suggestions.filter(s=>s.content&&s.content.startsWith('[建议]')).length:0}）</div>
+    ${sgHtml}
   </div>`;
-  const{data:notifs}=await db.from('notifications').select('*').order('created_at',{ascending:false}).limit(30);
-  if(notifs&&notifs.length){
-    document.getElementById('admin-log').innerHTML=notifs.map(n=>`<div style="padding:8px 0;border-bottom:1px solid var(--border2);font-size:13px;"><strong>${esc(n.sender_name||'系统')}</strong> → ${esc(n.recipient_id)}: ${esc(n.message)} <span style="color:#bbb;font-size:11px;">${fmtTime(n.created_at)}</span></div>`).join('');
-  }
 }
 async function sendBroadcast(){
-  const msg=document.getElementById('admin-broadcast').value.trim();
-  if(!msg){alert('请输入公告内容');return;}
-  const{data:users}=await db.from('profiles').select('id');
-  if(!users||!users.length)return;
-  const rows=users.filter(u=>u.id!==my.id).map(u=>({recipient_id:u.id,type:'system',sender_id:ADMIN_ID,sender_name:'系统公告',message:msg}));
-  if(rows.length){await db.from('notifications').insert(rows);}
-  document.getElementById('admin-broadcast').value='';
-  alert(`已向 ${rows.length} 位用户发送通知`);
+  const msg=document.getElementById('admin-broadcast').value.trim();if(!msg){alert('请输入公告内容');return;}
+  const{data:users}=await db.from('profiles').select('id');if(!users)return;
+  const rows=users.filter(u=>u.id!==my.id).map(u=>({recipient_id:u.id,type:'system',sender_id:ADMIN_ID,sender_name:'📢 系统公告',message:msg}));
+  if(rows.length)await db.from('notifications').insert(rows);
+  document.getElementById('admin-broadcast').value='';alert(`已向 ${rows.length} 位用户发送公告`);
+}
+async function sendVote(){
+  const t=document.getElementById('vote-title').value.trim(),a=document.getElementById('vote-a').value.trim(),b=document.getElementById('vote-b').value.trim(),c=document.getElementById('vote-c').value.trim();
+  if(!t||!a||!b){alert('请填写标题和至少两个选项');return;}
+  let txt=`📊 【投票】${t}\n\nA: ${a}\nB: ${b}`;if(c)txt+=`\nC: ${c}`;txt+='\n\n请在评论区投票！';
+  await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:txt,likes:0}]);
+  document.getElementById('vote-title').value='';document.getElementById('vote-a').value='';document.getElementById('vote-b').value='';document.getElementById('vote-c').value='';alert('投票已发布');loadFeed('all');
+}
+async function sendQA(){
+  const q=document.getElementById('qa-content').value.trim();if(!q){alert('请输入问题');return;}
+  await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:`❓ 【问答】${q}\n\n欢迎在评论区回答！`,likes:0}]);
+  document.getElementById('qa-content').value='';alert('问答已发布');loadFeed('all');
+}
+function replySuggestion(uid,name){closeAdmin();openChat(uid,name);}
+async function sendSuggestion(){
+  const txt=document.getElementById('suggest-inp').value.trim();if(!txt){alert('请输入建议内容');return;}
+  await db.from('messages').insert([{sender_id:my.id,sender_name:my.name,recipient_id:ADMIN_ID,recipient_name:'管理员',content:'[建议] '+txt}]);
+  document.getElementById('suggest-inp').value='';alert('建议已提交，感谢反馈！');
 }
 
+// ── 数据看板 ──
 async function loadAdminDashboard(){
   const cont=document.getElementById('admin-dashboard');
   cont.innerHTML='<div class="empty">加载中…</div>';
-  const[{count:userCount},{count:postCount},{count:commentCount},{count:msgCount},{data:recentUsers}]=await Promise.all([
-    db.from('profiles').select('*',{count:'exact',head:true}),
-    db.from('posts').select('*',{count:'exact',head:true}),
-    db.from('comments').select('*',{count:'exact',head:true}),
-    db.from('messages').select('*',{count:'exact',head:true}),
-    db.from('profiles').select('id,name,username').order('id',{ascending:false}).limit(5)
+  const now=new Date(),todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString();
+  const weekStart=new Date(now.getTime()-6*86400000);weekStart.setHours(0,0,0,0);const weekISO=weekStart.toISOString();
+  const[{data:allUsers},{data:todayUsers},{data:weekUsers},{data:allPosts},{data:todayPosts},{data:weekPosts},{data:postsByCmt},{data:postsByLike},{data:userFollowers}]=await Promise.all([
+    db.from('profiles').select('*').order('created_at',{ascending:false}),
+    db.from('profiles').select('*').gte('created_at',todayStart).order('created_at',{ascending:false}),
+    db.from('profiles').select('*').gte('created_at',weekISO).order('created_at',{ascending:false}),
+    db.from('posts').select('*').order('created_at',{ascending:false}),
+    db.from('posts').select('*').gte('created_at',todayStart).order('created_at',{ascending:false}),
+    db.from('posts').select('*').gte('created_at',weekISO).order('created_at',{ascending:false}),
+    db.from('comments').select('post_id'),
+    db.from('posts').select('*').order('likes',{ascending:false}).limit(20),
+    db.from('follows').select('following_id')
   ]);
+  await fetchProfiles((allUsers||[]).map(u=>u.id).concat((allPosts||[]).map(p=>p.author_id)));
+  const fmtReg=d=>d.created_at?new Date(d.created_at).toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  function userRow(u){const p=getProfile(u.id);const n=p?p.name:u.name||u.username;const av=p?p.avatar_url:'';const avS=av?`background-image:url('${av}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(n)};font-size:12px;`;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div class="av" style="width:28px;height:28px;flex-shrink:0;cursor:pointer;${avS}" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(n)}')">${av?'':esc((n||'?')[0])}</div><div style="flex:1;font-size:13px;"><strong>${esc(n)}</strong> <span style="color:#bbb;">@${esc(u.username)}</span></div><span style="font-size:11px;color:#bbb;">${fmtReg(u)}</span></div>`;}
+  function postRow(p,extra){const prof=getProfile(p.author_id);const n=prof?prof.name:p.author_name;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div style="flex:1;min-width:0;font-size:13px;"><strong>${esc(n)}</strong>: <span style="color:var(--text2);">${esc((p.content||'[图片]').slice(0,40))}</span></div><span style="font-size:12px;color:var(--pk);font-weight:bold;flex-shrink:0;">${extra}</span></div>`;}
+  // 评论数统计
+  const cmtCount={};(postsByCmt||[]).forEach(c=>cmtCount[c.post_id]=(cmtCount[c.post_id]||0)+1);
+  const postsSortedByCmt=[...(allPosts||[])].sort((a,b)=>(cmtCount[b.id]||0)-(cmtCount[a.id]||0)).slice(0,15);
+  // 粉丝数统计
+  const followerCount={};(userFollowers||[]).forEach(f=>followerCount[f.following_id]=(followerCount[f.following_id]||0)+1);
+  const usersSortedByFans=[...(allUsers||[])].sort((a,b)=>(followerCount[b.id]||0)-(followerCount[a.id]||0)).slice(0,15);
   cont.innerHTML=`
-    <div class="admin-stats-grid">
-      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${userCount||0}</div><div class="admin-stat-label">注册用户</div></div></div>
-      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${postCount||0}</div><div class="admin-stat-label">帖子总数</div></div></div>
-      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${commentCount||0}</div><div class="admin-stat-label">评论总数</div></div></div>
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">👤 注册用户</div>
+    <div class="admin-stats-grid" style="padding:0;margin-bottom:12px;">
+      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(allUsers||[]).length}</div><div class="admin-stat-label">总数</div></div></div>
+      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(todayUsers||[]).length}</div><div class="admin-stat-label">今日注册</div></div></div>
+      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(weekUsers||[]).length}</div><div class="admin-stat-label">本周注册</div></div></div>
     </div>
-    <div class="admin-stats-grid" style="padding-top:0;">
-      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${msgCount||0}</div><div class="admin-stat-label">私信总数</div></div></div>
-      <div class="admin-card" style="grid-column:span 2;"><div class="admin-stat"><div class="admin-stat-num">${(recentUsers||[]).length}</div><div class="admin-stat-label">最近注册</div></div></div>
+    <details><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看今日注册 (${(todayUsers||[]).length})</summary>${(todayUsers||[]).map(u=>userRow(u)).join('')||'<div class="empty">今日无新用户</div>'}</details>
+    <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看本周注册 (${(weekUsers||[]).length})</summary>${(weekUsers||[]).map(u=>userRow(u)).join('')||'<div class="empty">本周无新用户</div>'}</details>
+    <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看全部用户 (${(allUsers||[]).length})</summary>${(allUsers||[]).map(u=>userRow(u)).join('')}</details>
+  </div>
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">📝 帖子数量</div>
+    <div class="admin-stats-grid" style="padding:0;margin-bottom:12px;">
+      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(allPosts||[]).length}</div><div class="admin-stat-label">总数</div></div></div>
+      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(todayPosts||[]).length}</div><div class="admin-stat-label">今日发布</div></div></div>
+      <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(weekPosts||[]).length}</div><div class="admin-stat-label">本周发布</div></div></div>
     </div>
-    <div style="padding:0 16px;">
-      <div style="font-weight:bold;font-size:16px;margin-bottom:8px;">最近注册用户</div>
-      ${(recentUsers||[]).map(u=>`<div style="padding:8px 0;border-bottom:1px solid var(--border2);font-size:14px;"><strong>${esc(u.name)}</strong> <span style="color:#bbb;">@${esc(u.username)}</span></div>`).join('')}
-    </div>`;
+    <details><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看今日帖子 (${(todayPosts||[]).length})</summary>${(todayPosts||[]).map(p=>postRow(p,fmtReg(p))).join('')||'<div class="empty">今日无帖子</div>'}</details>
+    <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看本周帖子 (${(weekPosts||[]).length})</summary>${(weekPosts||[]).map(p=>postRow(p,fmtReg(p))).join('')||'<div class="empty">本周无帖子</div>'}</details>
+  </div>
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">💬 评论排行（高→低）</div>
+    ${postsSortedByCmt.map(p=>postRow(p,`${cmtCount[p.id]||0} 评论`)).join('')||'<div class="empty">暂无数据</div>'}
+  </div>
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">❤️ 点赞排行（高→低）</div>
+    ${(postsByLike||[]).map(p=>postRow(p,`${p.likes||0} 赞`)).join('')||'<div class="empty">暂无数据</div>'}
+  </div>
+  <div style="padding:16px;">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">👥 粉丝排行（高→低）</div>
+    ${usersSortedByFans.map(u=>{const p=getProfile(u.id);const n=p?p.name:u.name;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div class="av" style="width:28px;height:28px;flex-shrink:0;cursor:pointer;background:${avc(n)};font-size:12px;" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(n)}')">${esc((n||'?')[0])}</div><div style="flex:1;font-size:13px;"><strong>${esc(n)}</strong></div><span style="font-size:12px;color:var(--pk);font-weight:bold;">${followerCount[u.id]||0} 粉丝</span></div>`;}).join('')||'<div class="empty">暂无数据</div>'}
+  </div>`;
 }
 
 // ── theme ─────────────────────────────────────────────
