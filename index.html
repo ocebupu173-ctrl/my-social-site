@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://podskdvqrhxvhnwylvsx.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://podskdvqrhxvhnwylvsx.supabase.co wss://podskdvqrhxvhnwylvsx.supabase.co;">
 <title>极简社交</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -221,19 +222,20 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
     <div class="atab"    id="tab-r" onclick="showTab('r')">注册</div>
   </div>
   <div id="form-l">
-    <input id="l-u" class="ai" placeholder="用户名">
+    <input id="l-u" class="ai" placeholder="真实姓名">
     <input id="l-p" class="ai" type="password" placeholder="密码">
     <div id="l-e" class="aerr"></div>
     <button class="abtn" onclick="doLogin()">登录</button>
   </div>
   <div id="form-r" style="display:none">
-    <input id="r-u" class="ai" placeholder="用户名（字母/数字/下划线）">
-    <input id="r-n" class="ai" placeholder="显示昵称">
+    <input id="r-u" class="ai" placeholder="真实姓名（仅管理员可见）">
+    <input id="r-n" class="ai" placeholder="显示昵称（其他用户看到的名字）">
+    <select id="r-cy" class="ai" style="color:#888;"><option value="">选择届数（仅管理员可见）</option><option>2020届</option><option>2021届</option><option>2022届</option><option>2023届</option><option>2024届</option><option>2025届</option><option>2026届</option><option>2027届</option><option>2028届</option><option>2029届</option><option>2030届</option></select>
     <input id="r-p" class="ai" type="password" placeholder="密码（至少6位）">
     <input id="r-p2" class="ai" type="password" placeholder="确认密码">
     <div id="r-e" class="aerr"></div>
     <button class="abtn" onclick="doRegister()">注册账号</button>
-    <div class="ahint">用户名与密码均不可与他人重复</div>
+    <div class="ahint">真实姓名和届数仅管理员可见，不会展示给其他用户</div>
   </div>
 </div>
 </div>
@@ -250,7 +252,7 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
       <div class="pgrid" id="pgrid"></div>
       <div class="ctool">
         <span onclick="document.getElementById('fp').click()" style="cursor:pointer;"><svg style="width:22px;height:22px;fill:#ccc" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
-        <input type="file" id="fp" accept="image/*" multiple hidden onchange="handleFiles(event)">
+        <input type="file" id="fp" accept="image/*,video/*" multiple hidden onchange="handleFiles(event)">
         <button class="btn-pk" onclick="publish()">发布</button>
       </div>
     </div>
@@ -388,6 +390,13 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
     <span class="set-row-label">生日</span>
     <span class="set-row-val" id="set-bd">未设置 ›</span>
   </div>
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:14px;margin-bottom:12px;color:var(--text2);">隐私设置（勾选后其他用户将看不到）</div>
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px;cursor:pointer;"><input type="checkbox" id="priv-region" onchange="savePrivacy()" style="accent-color:var(--pk);width:18px;height:18px;">隐藏所在地区</label>
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px;cursor:pointer;"><input type="checkbox" id="priv-constellation" onchange="savePrivacy()" style="accent-color:var(--pk);width:18px;height:18px;">隐藏星座</label>
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px;cursor:pointer;"><input type="checkbox" id="priv-birthday" onchange="savePrivacy()" style="accent-color:var(--pk);width:18px;height:18px;">隐藏生日</label>
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px;cursor:pointer;"><input type="checkbox" id="priv-bio" onchange="savePrivacy()" style="accent-color:var(--pk);width:18px;height:18px;">隐藏个人简介</label>
+  </div>
   <div class="theme-section" style="border-bottom:1px solid var(--border);">
     <div class="theme-title">主题颜色</div>
     <div class="theme-colors" id="theme-colors"></div>
@@ -444,7 +453,7 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
       <span onclick="document.getElementById('fchat').click()" style="cursor:pointer;flex-shrink:0;display:flex;align-items:center;">
         <svg style="width:24px;height:24px;fill:#ccc" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
       </span>
-      <input type="file" id="fchat" accept="image/*" multiple hidden onchange="handleChatImgs(event)">
+      <input type="file" id="fchat" accept="image/*,video/*" multiple hidden onchange="handleChatImgs(event)">
       <input id="chat-inp" placeholder="发消息…" class="chat-inp" style="flex:1;min-width:0;border:1.5px solid var(--border);border-radius:20px;padding:9px 14px;font-size:15px;outline:none;background:var(--input-bg);color:var(--text);" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}">
       <button class="btn-pk" style="padding:8px 16px;flex-shrink:0;white-space:nowrap;" onclick="sendMsg()">发送</button>
     </div>
@@ -538,7 +547,7 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
     <div id="reply-img-preview" style="display:none;padding:4px 15px 0;"><div class="pgrid" id="reply-pgrid"></div></div>
     <div class="mc">
       <span onclick="document.getElementById('freply').click()" style="cursor:pointer;flex-shrink:0;display:flex;align-items:center;"><svg style="width:22px;height:22px;fill:#ccc" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
-      <input type="file" id="freply" accept="image/*" multiple hidden onchange="handleReplyImgs(event)">
+      <input type="file" id="freply" accept="image/*,video/*" multiple hidden onchange="handleReplyImgs(event)">
       <textarea id="reply-inp" placeholder="说点什么…"></textarea>
       <button class="btn-pk" onclick="submitReply()">回复</button>
     </div>
@@ -565,11 +574,12 @@ let meTab='posts';
 const ADMIN_ID='11';
 
 // ── auth ──────────────────────────────────────────────
+let loginAttempts=0,loginLockUntil=0;
 async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
 function showTab(t){document.getElementById('form-l').style.display=t==='l'?'block':'none';document.getElementById('form-r').style.display=t==='r'?'block':'none';document.getElementById('tab-l').className='atab'+(t==='l'?' on':'');document.getElementById('tab-r').className='atab'+(t==='r'?' on':'');}
-async function doLogin(){const u=document.getElementById('l-u').value.trim(),p=document.getElementById('l-p').value,e=document.getElementById('l-e');e.style.display='none';if(!u||!p){e.innerText='请填写完整';e.style.display='block';return;}const h=await sha256(p);const{data}=await db.from('profiles').select('*').eq('username',u).eq('password_hash',h).single();if(!data){e.innerText='用户名或密码错误';e.style.display='block';return;}startSession(data);}
-async function doRegister(){const u=document.getElementById('r-u').value.trim(),n=document.getElementById('r-n').value.trim(),p=document.getElementById('r-p').value,p2=document.getElementById('r-p2').value,e=document.getElementById('r-e');e.style.display='none';if(!u||!n||!p||!p2){e.innerText='请填写所有字段';e.style.display='block';return;}if(!/^[a-zA-Z0-9_]+$/.test(u)){e.innerText='用户名仅限字母数字下划线';e.style.display='block';return;}if(p.length<6){e.innerText='密码至少6位';e.style.display='block';return;}if(p!==p2){e.innerText='两次密码不一致';e.style.display='block';return;}const{data:ex}=await db.from('profiles').select('id').eq('username',u).maybeSingle();if(ex){e.innerText='用户名已被使用';e.style.display='block';return;}const h=await sha256(p);const{data,error}=await db.from('profiles').insert([{id:u,username:u,name:n,password_hash:h,bio:'',region:'',constellation:'',birthday:'',avatar_url:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100}]).select().single();if(error){e.innerText='注册失败：'+error.message;e.style.display='block';return;}startSession(data);}
-function startSession(p){session=p;localStorage.setItem('session',JSON.stringify(p));launchApp();}
+async function doLogin(){const u=document.getElementById('l-u').value.trim(),p=document.getElementById('l-p').value,e=document.getElementById('l-e');e.style.display='none';if(Date.now()<loginLockUntil){const sec=Math.ceil((loginLockUntil-Date.now())/1000);e.innerText=`登录过于频繁，请${sec}秒后重试`;e.style.display='block';return;}if(!u||!p){e.innerText='请填写完整';e.style.display='block';return;}const{data:prof}=await db.from('profiles').select('*').eq('username',u).maybeSingle();if(!prof){e.innerText='姓名或密码错误';e.style.display='block';return;}const salt=prof.password_salt||'';const h=await sha256(salt+p);if(h!==prof.password_hash){if(!salt){const h2=await sha256(p);if(h2===prof.password_hash){loginAttempts=0;startSession(prof);return;}}loginAttempts++;if(loginAttempts>=5){loginLockUntil=Date.now()+60000;loginAttempts=0;}e.innerText='姓名或密码错误'+(loginAttempts>=3?'（多次失败将被限制）':'');e.style.display='block';return;}loginAttempts=0;startSession(prof);}
+async function doRegister(){const u=document.getElementById('r-u').value.trim(),n=document.getElementById('r-n').value.trim(),cy=document.getElementById('r-cy').value,p=document.getElementById('r-p').value,p2=document.getElementById('r-p2').value,e=document.getElementById('r-e');e.style.display='none';if(!u||!n||!p||!p2){e.innerText='请填写所有字段';e.style.display='block';return;}if(u.length<1||u.length>20){e.innerText='真实姓名长度1-20个字符';e.style.display='block';return;}if(/[<>"';&]/.test(u)){e.innerText='姓名不能包含特殊符号';e.style.display='block';return;}if(p.length<6){e.innerText='密码至少6位';e.style.display='block';return;}if(p!==p2){e.innerText='两次密码不一致';e.style.display='block';return;}const{data:ex}=await db.from('profiles').select('id').eq('username',u).maybeSingle();if(ex){e.innerText='该姓名已被注册';e.style.display='block';return;}const salt=crypto.getRandomValues(new Uint8Array(16)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');const h=await sha256(salt+p);const{data,error}=await db.from('profiles').insert([{id:u,username:u,name:n,password_hash:h,password_salt:salt,class_year:cy||'',bio:'',region:'',constellation:'',birthday:'',avatar_url:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100,privacy:''}]).select().single();if(error){e.innerText='注册失败：'+error.message;e.style.display='block';return;}startSession(data);}
+function startSession(p){const safe={...p};delete safe.password_hash;delete safe.password_salt;session=safe;localStorage.setItem('session',JSON.stringify(safe));launchApp();}
 function logout(){session=null;localStorage.removeItem('session');document.getElementById('main-app').style.display='none';document.getElementById('auth-screen').style.display='flex';postImgs=[];likedPosts=new Set();likedComments=new Set();followed=[];}
 function launchApp(){my={...session};likedPosts=new Set(JSON.parse(localStorage.getItem('lp_'+my.id)||'[]'));likedComments=new Set(JSON.parse(localStorage.getItem('lc_'+my.id)||'[]'));followed=JSON.parse(localStorage.getItem('fol_'+my.id)||'[]');document.getElementById('auth-screen').style.display='none';document.getElementById('main-app').style.display='block';init();}
 
@@ -583,8 +593,11 @@ function applyAv(el,name,url,size){if(!el)return;if(url){el.style.cssText=`width
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmtBd(bd){if(!bd)return'未设置';const[y,m,d]=bd.split('-').map(Number);return`${y}年${m}月${d}日`;}
 function fmtTime(ts){if(!ts)return'';const d=Date.now()-new Date(ts);if(d<60000)return'刚刚';if(d<3600000)return Math.floor(d/60000)+'分钟前';if(d<86400000)return Math.floor(d/3600000)+'小时前';const dt=new Date(ts);return`${dt.getMonth()+1}/${dt.getDate()}`;}
-function compress(file,px=1000,q=.78){return new Promise(res=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);const s=Math.min(1,px/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);res(cv.toDataURL('image/jpeg',q));};img.src=url;});}
+function compress(file,px=1920,q=.80){return new Promise(res=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);const s=Math.min(1,px/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);const webp=cv.toDataURL('image/webp',q);if(webp.startsWith('data:image/webp'))res(webp);else res(cv.toDataURL('image/jpeg',q));};img.src=url;});}
 function shortLoc(region){if(!region)return'';const parts=region.split('·');return(parts[parts.length-1]||'').trim();}
+
+function compressVideo(file){return new Promise((res,rej)=>{if(file.size>50*1024*1024){rej('视频文件不能超过50MB');return;}const url=URL.createObjectURL(file);const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{URL.revokeObjectURL(url);if(v.duration>300){rej('视频不能超过5分钟');return;}const reader=new FileReader();reader.onload=()=>res(reader.result);reader.onerror=()=>rej('视频读取失败');reader.readAsDataURL(file);};v.onerror=()=>{URL.revokeObjectURL(url);rej('无法读取视频');};v.src=url;});}
+async function processFile(file){if(file.type.startsWith('video/'))return compressVideo(file);return compress(file);}
 
 // ── lightbox ─────────────────────────────────────────
 function openLb(imgs,idx){lbImgs=imgs;lbIdx=idx||0;document.getElementById('lb-img').src=lbImgs[lbIdx];document.getElementById('lb-counter').innerText=lbImgs.length>1?`${lbIdx+1} / ${lbImgs.length}`:'';document.getElementById('lb-prev').style.display=lbImgs.length>1?'block':'none';document.getElementById('lb-next').style.display=lbImgs.length>1?'block':'none';document.getElementById('lightbox').style.display='flex';document.body.style.overflow='hidden';}
@@ -599,7 +612,7 @@ function renderImgs(raw){
   const n=Math.min(a.length,9);
   const cls=`imgs imgs-${n}`;
   const escaped=JSON.stringify(a).replace(/'/g,"\\'");
-  return`<div class="${cls}">${a.slice(0,9).map((s,i)=>`<img src="${esc(s)}" onclick="event.stopPropagation();openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('')}</div>`;
+  return`<div class="${cls}">${a.slice(0,9).map((s,i)=>s.startsWith('data:video/')?`<video src="${esc(s)}" controls playsinline style="width:100%;height:100%;object-fit:cover;border-radius:14px;max-height:360px;"></video>`:`<img src="${esc(s)}" onclick="event.stopPropagation();openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('')}</div>`;
 }
 
 // ── crop modal ────────────────────────────────────────
@@ -661,11 +674,14 @@ async function loadMyStats(){
 }
 function openSettings(){
   document.getElementById('i-name').value=my.name||'';document.getElementById('i-bio').value=my.bio||'';
-  updateSettingsVals();
+  updateSettingsVals();loadPrivacyUI();
   const ae=document.getElementById('admin-entry');if(ae)ae.style.display=my.id===ADMIN_ID?'block':'none';
   const se=document.getElementById('suggest-entry');if(se)se.style.display=my.id!==ADMIN_ID?'block':'none';
   document.getElementById('v-settings').style.display='block';document.body.style.overflow='hidden';
 }
+function loadPrivacyUI(){const pv=(my.privacy||'').split(',');['region','constellation','birthday','bio'].forEach(k=>{const el=document.getElementById('priv-'+k);if(el)el.checked=pv.includes(k);});}
+async function savePrivacy(){const fields=['region','constellation','birthday','bio'];const pv=fields.filter(k=>document.getElementById('priv-'+k)?.checked).join(',');my.privacy=pv;session.privacy=pv;localStorage.setItem('session',JSON.stringify(session));await db.from('profiles').update({privacy:pv}).eq('id',my.id);}
+function isPrivate(profile,field){return(profile.privacy||'').split(',').includes(field);}
 function closeSettings(){document.getElementById('v-settings').style.display='none';document.body.style.overflow='';}
 function updateSettingsVals(){
   const sc=document.getElementById('set-city');if(sc)sc.innerText=(my.region||'未设置')+' ›';
@@ -699,7 +715,7 @@ async function loadLikedPosts(){
 let profileCache={};
 async function fetchProfiles(ids){
   const need=ids.filter(id=>id!==my.id&&!profileCache[id]);
-  if(need.length){const{data}=await db.from('profiles').select('id,name,avatar_url,region').in('id',[...new Set(need)]);(data||[]).forEach(p=>profileCache[p.id]=p);}
+  if(need.length){const{data}=await db.from('profiles').select('id,name,avatar_url,region,privacy').in('id',[...new Set(need)]);(data||[]).forEach(p=>profileCache[p.id]=p);}
 }
 function getProfile(id){if(id===my.id)return{id:my.id,name:my.name,avatar_url:my.avatar_url,region:my.region};return profileCache[id]||null;}
 
@@ -749,8 +765,8 @@ async function sharePost(id){
 }
 
 // ── compose (max 9 images) ───────────────────────────
-async function handleFiles(e){const r=9-postImgs.length;if(r<=0){alert('最多9张');return;}for(const f of Array.from(e.target.files).slice(0,r))postImgs.push(await compress(f));e.target.value='';renderPgrid();}
-function renderPgrid(){document.getElementById('pgrid').innerHTML=postImgs.map((s,i)=>`<div class="pwrap"><img class="pthumb" src="${s}"><div class="pdel" onclick="rmImg(${i})">×</div></div>`).join('');}
+async function handleFiles(e){const r=9-postImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{postImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderPgrid();}
+function renderPgrid(){document.getElementById('pgrid').innerHTML=postImgs.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="rmImg(${i})">×</div></div>`).join('');}
 function rmImg(i){postImgs.splice(i,1);renderPgrid();}
 async function publish(){const txt=document.getElementById('inp').value.trim();if(!txt&&!postImgs.length)return;const iv=postImgs.length?JSON.stringify(postImgs):null;const{error}=await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:txt,image_url:iv,likes:0}]);if(error){alert('发帖失败：'+error.message);return;}document.getElementById('inp').value='';postImgs=[];renderPgrid();await loadFeed('all');}
 
@@ -820,7 +836,7 @@ async function loadDmList(){
 async function openChat(uid,name){chatUid=uid;chatName=name;chatImgs=[];document.getElementById('chat-title').innerText=name;document.getElementById('chat-msgs').innerHTML='<div class="empty">加载中…</div>';document.getElementById('chat-img-preview').style.display='none';document.getElementById('v-chat').style.display='flex';document.body.style.overflow='hidden';await loadChatMsgs();}
 function closeChat(){document.getElementById('v-chat').style.display='none';document.body.style.overflow='';chatUid=null;chatImgs=[];}
 async function loadChatMsgs(){const{data}=await db.from('messages').select('*').or(`and(sender_id.eq.${my.id},recipient_id.eq.${chatUid}),and(sender_id.eq.${chatUid},recipient_id.eq.${my.id})`).order('created_at',{ascending:true});await db.from('messages').update({is_read:true}).eq('recipient_id',my.id).eq('sender_id',chatUid);const cont=document.getElementById('chat-msgs');if(!data||!data.length){cont.innerHTML='<div class="empty">发送第一条消息吧</div>';return;}cont.innerHTML=data.map(m=>{const mine=m.sender_id===my.id;const avStyle=mine?(my.avatar_url?`background-image:url('${my.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(my.name)};`):`background:${avc(m.sender_name)};`;const avTxt=mine?(my.avatar_url?'':(my.name||'?')[0]):(m.sender_name||'?')[0];let imgHtml='';if(m.image_url){let imgs;try{imgs=JSON.parse(m.image_url);}catch{imgs=[m.image_url];}if(!Array.isArray(imgs))imgs=[imgs];const escaped=JSON.stringify(imgs).replace(/'/g,"\\'");imgHtml=imgs.map((s,i)=>`<img class="chat-img" src="${esc(s)}" onclick="openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('');}return`<div class="chat-msg${mine?' mine':''}"><div class="av" style="width:34px;height:34px;flex-shrink:0;font-size:13px;${avStyle}">${esc(avTxt)}</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'};">${m.content?`<div class="chat-bubble">${esc(m.content)}</div>`:''}${imgHtml}<div style="font-size:11px;color:#aaa;margin-top:3px;">${fmtTime(m.created_at)}</div></div></div>`;}).join('');cont.scrollTop=cont.scrollHeight;}
-async function handleChatImgs(e){const r=9-chatImgs.length;if(r<=0){alert('最多9张');return;}for(const f of Array.from(e.target.files).slice(0,r))chatImgs.push(await compress(f,800,.75));e.target.value='';renderChatPgrid();}
+async function handleChatImgs(e){const r=9-chatImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{chatImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderChatPgrid();}
 function renderChatPgrid(){const cont=document.getElementById('chat-pgrid');cont.innerHTML=chatImgs.map((s,i)=>`<div class="pwrap"><img class="pthumb" src="${s}"><div class="pdel" onclick="rmChatImg(${i})">×</div></div>`).join('');document.getElementById('chat-img-preview').style.display=chatImgs.length?'block':'none';}
 function rmChatImg(i){chatImgs.splice(i,1);renderChatPgrid();}
 async function sendMsg(){const txt=document.getElementById('chat-inp').value.trim();if(!txt&&!chatImgs.length)return;const imgData=chatImgs.length?JSON.stringify(chatImgs):null;const{error}=await db.from('messages').insert([{sender_id:my.id,sender_name:my.name,recipient_id:chatUid,recipient_name:chatName,content:txt,image_url:imgData}]);if(error){alert('发送失败：'+error.message);return;}document.getElementById('chat-inp').value='';chatImgs=[];renderChatPgrid();await loadChatMsgs();}
@@ -829,7 +845,7 @@ async function sendMsg(){const txt=document.getElementById('chat-inp').value.tri
 async function openUser(uid,uname){if(uid===my.id){switchNav('me');return;}viewingUid=uid;viewingName=uname;const panel=document.getElementById('v-user');document.getElementById('u-hdn').innerText=uname;document.getElementById('u-name').innerText='加载中…';document.getElementById('u-posts').innerHTML='<div class="empty">加载中…</div>';updateFBtn();panel.style.display='block';document.body.style.overflow='hidden';
   const{data:p}=await db.from('profiles').select('*').eq('id',uid).maybeSingle();
   const ucov=document.getElementById('u-cover'),uav=document.getElementById('u-av');
-  if(p){document.getElementById('u-name').innerText=p.name||uname;document.getElementById('u-bio').innerText=p.bio||'暂无简介';document.getElementById('u-city').innerText='📍 '+(p.region||'未设置');document.getElementById('u-const').innerText='✨ '+(p.constellation||'未设置');document.getElementById('u-birth').innerText='🎂 '+fmtBd(p.birthday);renderCoverBanner(ucov,p.cover_url,p.cover_pos,p.cover_zoom);applyAv(uav,p.name||uname,p.avatar_url,80);}
+  if(p){document.getElementById('u-name').innerText=p.name||uname;document.getElementById('u-bio').innerText=isPrivate(p,'bio')?'':p.bio||'暂无简介';document.getElementById('u-city').innerText=isPrivate(p,'region')?'':'📍 '+(p.region||'未设置');document.getElementById('u-city').style.display=isPrivate(p,'region')?'none':'';document.getElementById('u-const').innerText=isPrivate(p,'constellation')?'':'✨ '+(p.constellation||'未设置');document.getElementById('u-const').style.display=isPrivate(p,'constellation')?'none':'';document.getElementById('u-birth').innerText=isPrivate(p,'birthday')?'':'🎂 '+fmtBd(p.birthday);document.getElementById('u-birth').style.display=isPrivate(p,'birthday')?'none':'';renderCoverBanner(ucov,p.cover_url,p.cover_pos,p.cover_zoom);applyAv(uav,p.name||uname,p.avatar_url,80);}
   else{document.getElementById('u-name').innerText=uname;renderCoverBanner(ucov,'','50% 50%',100);applyAv(uav,uname,null,80);}
   const[{data:posts},{data:comms},{data:uPosts},{count:uFollowers}]=await Promise.all([
     db.from('posts').select('*').eq('author_id',uid).order('created_at',{ascending:false}),
@@ -859,7 +875,7 @@ function closeReply(){document.getElementById('modal-reply').style.display='none
 function setRto(cid,name){replyingTo={id:cid,name};document.getElementById('rto-name').innerText=name;document.getElementById('rto-bar').style.display='flex';document.getElementById('reply-inp').focus();}
 function cancelRto(){replyingTo=null;document.getElementById('rto-bar').style.display='none';}
 
-async function handleReplyImgs(e){const r=9-replyImgs.length;if(r<=0){alert('最多9张');return;}for(const f of Array.from(e.target.files).slice(0,r))replyImgs.push(await compress(f,800,.75));e.target.value='';renderReplyPgrid();}
+async function handleReplyImgs(e){const r=9-replyImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{replyImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderReplyPgrid();}
 function renderReplyPgrid(){document.getElementById('reply-pgrid').innerHTML=replyImgs.map((s,i)=>`<div class="pwrap"><img class="pthumb" src="${s}"><div class="pdel" onclick="rmReplyImg(${i})">×</div></div>`).join('');document.getElementById('reply-img-preview').style.display=replyImgs.length?'block':'none';}
 function rmReplyImg(i){replyImgs.splice(i,1);renderReplyPgrid();}
 
@@ -907,7 +923,7 @@ async function submitReply(){
 }
 
 // ── admin ─────────────────────────────────────────────
-function openAdmin(){if(my.id!==ADMIN_ID)return;document.getElementById('v-admin').style.display='block';switchAdminTab('content');}
+async function openAdmin(){if(my.id!==ADMIN_ID)return;const pw=prompt('请输入管理员密码验证身份：');if(!pw)return;const{data:prof}=await db.from('profiles').select('password_hash,password_salt').eq('id',ADMIN_ID).maybeSingle();if(!prof)return;const salt=prof.password_salt||'';const h=await sha256(salt+pw);if(h!==prof.password_hash){const h2=await sha256(pw);if(h2!==prof.password_hash){alert('密码错误');return;}}document.getElementById('v-admin').style.display='block';switchAdminTab('content');}
 function closeAdmin(){document.getElementById('v-admin').style.display='none';}
 function switchAdminTab(tab){
   ['content','users','reports','dashboard'].forEach(t=>{
@@ -947,7 +963,9 @@ async function adminDelComment(id){if(!confirm('管理员删除此评论？'))re
 async function loadAdminUsers(){
   const cont=document.getElementById('admin-users');
   cont.innerHTML='<div class="empty">加载中…</div>';
-  const{data:users}=await db.from('profiles').select('*').order('created_at',{ascending:false});
+  let res=await db.from('profiles').select('*').order('created_at',{ascending:false});
+  if(!res.data)res=await db.from('profiles').select('*');
+  const users=res.data;
   if(!users||!users.length){cont.innerHTML='<div class="empty">暂无用户</div>';return;}
   cont.innerHTML='<div style="padding:12px 16px;font-weight:bold;font-size:16px;border-bottom:1px solid var(--border);">全部用户（'+users.length+'）</div>'+
     users.map(u=>{
@@ -956,13 +974,13 @@ async function loadAdminUsers(){
       const regTime=u.created_at?new Date(u.created_at).toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'未知';
       return`<div class="admin-user-row">
         <div class="av" style="width:40px;height:40px;flex-shrink:0;cursor:pointer;${avS}" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(u.name||u.username)}')">${esc(avC)}</div>
-        <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(u.name||u.username)} <span style="color:#bbb;font-weight:normal;">@${esc(u.username)}</span>${u.id===ADMIN_ID?'<span style="background:var(--pk);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:4px;">管理员</span>':''}</div><div style="font-size:12px;color:var(--text2);">${esc(u.region||'未设置地区')} · 注册于 ${regTime}</div></div>
+        <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(u.name||u.username)} ${u.id===ADMIN_ID?'<span style="background:var(--pk);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:4px;">管理员</span>':''}</div><div style="font-size:12px;color:var(--text2);">真实姓名: ${esc(u.username)} ${u.class_year?'· '+esc(u.class_year):''} · ${esc(u.region||'未设置地区')}</div><div style="font-size:11px;color:#bbb;">注册于 ${regTime}</div></div>
         <div class="admin-actions">
           ${u.id!==ADMIN_ID?`<button class="admin-btn" onclick="adminResetProfile('${esc(u.id)}')">重置</button><button class="admin-btn danger" onclick="adminBanUser('${esc(u.id)}','${esc(u.name||u.username)}')">封禁</button>`:''}
         </div>
       </div>`;}).join('');
 }
-async function adminResetProfile(uid){if(!confirm('重置该用户所有信息？头像、昵称、简介、地区、星座、生日将全部归零。'))return;await db.from('profiles').update({avatar_url:'',bio:'',name:uid,region:'',constellation:'',birthday:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100}).eq('id',uid);alert('已重置全部资料');loadAdminUsers();}
+async function adminResetProfile(uid){if(!confirm('重置该用户所有信息？头像、昵称、简介、地区、星座、生日将全部归零。'))return;await db.from('profiles').update({avatar_url:'',bio:'',name:uid,region:'',constellation:'',birthday:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100,privacy:''}).eq('id',uid);delete profileCache[uid];alert('已重置全部资料');loadAdminUsers();}
 async function adminBanUser(uid,name){if(uid===ADMIN_ID){alert('无法封禁管理员');return;}if(!confirm(`封禁用户 ${name}？\n该账号将被永久删除，包括所有帖子、评论和私信。此操作不可逆。`))return;await Promise.all([db.from('comments').delete().eq('author_id',uid),db.from('posts').delete().eq('author_id',uid),db.from('messages').delete().or(`sender_id.eq.${uid},recipient_id.eq.${uid}`),db.from('notifications').delete().or(`sender_id.eq.${uid},recipient_id.eq.${uid}`)]);await db.from('profiles').delete().eq('id',uid);alert('已封禁并永久删除');loadAdminUsers();}
 
 // ── 举报与互动 ──
@@ -978,44 +996,60 @@ async function loadAdminReports(){
   <div style="padding:16px;border-bottom:1px solid var(--border);">
     <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">📢 全站公告</div>
     <textarea id="admin-broadcast" class="ef" placeholder="输入公告内容，将通知所有用户…"></textarea>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;"><span onclick="document.getElementById('f-broadcast').click()" style="cursor:pointer;color:var(--pk);font-size:13px;">+ 添加图片/视频</span><input type="file" id="f-broadcast" accept="image/*,video/*" multiple hidden onchange="handleAdminMedia(event,'broadcast')"><div class="pgrid" id="pgrid-broadcast"></div></div>
     <button class="btn-pk" style="width:100%;" onclick="sendBroadcast()">发送公告</button>
   </div>
   <div style="padding:16px;border-bottom:1px solid var(--border);">
     <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">📊 全站投票</div>
     <input id="vote-title" class="ef" placeholder="投票标题">
-    <input id="vote-a" class="ef" placeholder="选项 A">
-    <input id="vote-b" class="ef" placeholder="选项 B">
-    <input id="vote-c" class="ef" placeholder="选项 C（可选）">
+    <div id="vote-options"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn-ghost" style="flex:1;" onclick="addVoteOption()">+ 添加选项</button>
+      <button class="btn-ghost" style="flex:1;" onclick="rmVoteOption()">- 删除选项</button>
+    </div>
     <button class="btn-pk" style="width:100%;" onclick="sendVote()">发起投票</button>
   </div>
   <div style="padding:16px;border-bottom:1px solid var(--border);">
     <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">❓ 全站问答</div>
     <textarea id="qa-content" class="ef" placeholder="输入问题，将以帖子形式发布…"></textarea>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;"><span onclick="document.getElementById('f-qa').click()" style="cursor:pointer;color:var(--pk);font-size:13px;">+ 添加图片/视频</span><input type="file" id="f-qa" accept="image/*,video/*" multiple hidden onchange="handleAdminMedia(event,'qa')"><div class="pgrid" id="pgrid-qa"></div></div>
     <button class="btn-pk" style="width:100%;" onclick="sendQA()">发布问答</button>
   </div>
   <div style="padding:16px;">
     <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">💡 用户建议（${suggestions?suggestions.filter(s=>s.content&&s.content.startsWith('[建议]')).length:0}）</div>
     ${sgHtml}
   </div>`;
+  initVoteOptions();
 }
+let adminMedia={broadcast:[],qa:[]};
+async function handleAdminMedia(e,type){const arr=adminMedia[type];const r=9-arr.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{arr.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';document.getElementById('pgrid-'+type).innerHTML=arr.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="adminMedia['${type}'].splice(${i},1);handleAdminMedia({target:{files:[],value:''},preventDefault:()=>{}},'')||document.getElementById('pgrid-${type}').innerHTML=adminMedia['${type}'].map((s,i)=>'').join('')">×</div></div>`).join('');renderAdminPgrid(type);}
+function renderAdminPgrid(type){const arr=adminMedia[type];document.getElementById('pgrid-'+type).innerHTML=arr.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="adminMedia.${type}.splice(${i},1);renderAdminPgrid('${type}')">×</div></div>`).join('');}
 async function sendBroadcast(){
-  const msg=document.getElementById('admin-broadcast').value.trim();if(!msg){alert('请输入公告内容');return;}
+  const msg=document.getElementById('admin-broadcast').value.trim();if(!msg&&!adminMedia.broadcast.length){alert('请输入公告内容');return;}
   const{data:users}=await db.from('profiles').select('id');if(!users)return;
   const rows=users.filter(u=>u.id!==my.id).map(u=>({recipient_id:u.id,type:'system',sender_id:ADMIN_ID,sender_name:'📢 系统公告',message:msg}));
   if(rows.length)await db.from('notifications').insert(rows);
-  document.getElementById('admin-broadcast').value='';alert(`已向 ${rows.length} 位用户发送公告`);
+  if(msg||adminMedia.broadcast.length){const iv=adminMedia.broadcast.length?JSON.stringify(adminMedia.broadcast):null;await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:'📢 【公告】'+msg,image_url:iv,likes:0}]);}
+  document.getElementById('admin-broadcast').value='';adminMedia.broadcast=[];renderAdminPgrid('broadcast');alert(`已向 ${rows.length} 位用户发送公告`);loadFeed('all');
 }
+let voteOptCount=0;
+function initVoteOptions(){voteOptCount=0;document.getElementById('vote-options').innerHTML='';addVoteOption();addVoteOption();}
+function addVoteOption(){if(voteOptCount>=10){alert('最多10个选项');return;}voteOptCount++;const letters='ABCDEFGHIJ';document.getElementById('vote-options').insertAdjacentHTML('beforeend',`<input class="ef vote-opt" placeholder="选项 ${letters[voteOptCount-1]}")}>`);}
+function rmVoteOption(){if(voteOptCount<=2){alert('至少保留2个选项');return;}document.getElementById('vote-options').lastElementChild.remove();voteOptCount--;}
 async function sendVote(){
-  const t=document.getElementById('vote-title').value.trim(),a=document.getElementById('vote-a').value.trim(),b=document.getElementById('vote-b').value.trim(),c=document.getElementById('vote-c').value.trim();
-  if(!t||!a||!b){alert('请填写标题和至少两个选项');return;}
-  let txt=`📊 【投票】${t}\n\nA: ${a}\nB: ${b}`;if(c)txt+=`\nC: ${c}`;txt+='\n\n请在评论区投票！';
+  const t=document.getElementById('vote-title').value.trim();
+  const opts=[...document.querySelectorAll('.vote-opt')].map(e=>e.value.trim()).filter(Boolean);
+  if(!t||opts.length<2){alert('请填写标题和至少两个选项');return;}
+  const letters='ABCDEFGHIJ';
+  let txt=`📊 【投票】${t}\n\n${opts.map((o,i)=>`${letters[i]}: ${o}`).join('\n')}\n\n请在评论区投票！`;
   await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:txt,likes:0}]);
-  document.getElementById('vote-title').value='';document.getElementById('vote-a').value='';document.getElementById('vote-b').value='';document.getElementById('vote-c').value='';alert('投票已发布');loadFeed('all');
+  document.getElementById('vote-title').value='';initVoteOptions();alert('投票已发布');loadFeed('all');
 }
 async function sendQA(){
-  const q=document.getElementById('qa-content').value.trim();if(!q){alert('请输入问题');return;}
-  await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:`❓ 【问答】${q}\n\n欢迎在评论区回答！`,likes:0}]);
-  document.getElementById('qa-content').value='';alert('问答已发布');loadFeed('all');
+  const q=document.getElementById('qa-content').value.trim();if(!q&&!adminMedia.qa.length){alert('请输入问题');return;}
+  const iv=adminMedia.qa.length?JSON.stringify(adminMedia.qa):null;
+  await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:`❓ 【问答】${q}\n\n欢迎在评论区回答！`,image_url:iv,likes:0}]);
+  document.getElementById('qa-content').value='';adminMedia.qa=[];renderAdminPgrid('qa');alert('问答已发布');loadFeed('all');
 }
 function replySuggestion(uid,name){closeAdmin();openChat(uid,name);}
 async function sendSuggestion(){
@@ -1030,10 +1064,12 @@ async function loadAdminDashboard(){
   cont.innerHTML='<div class="empty">加载中…</div>';
   const now=new Date(),todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString();
   const weekStart=new Date(now.getTime()-6*86400000);weekStart.setHours(0,0,0,0);const weekISO=weekStart.toISOString();
-  const[{data:allUsers},{data:todayUsers},{data:weekUsers},{data:allPosts},{data:todayPosts},{data:weekPosts},{data:postsByCmt},{data:postsByLike},{data:userFollowers}]=await Promise.all([
-    db.from('profiles').select('*').order('created_at',{ascending:false}),
-    db.from('profiles').select('*').gte('created_at',todayStart).order('created_at',{ascending:false}),
-    db.from('profiles').select('*').gte('created_at',weekISO).order('created_at',{ascending:false}),
+  let allUsersRes=await db.from('profiles').select('*').order('created_at',{ascending:false});
+  if(!allUsersRes.data)allUsersRes=await db.from('profiles').select('*');
+  const allUsers=allUsersRes.data;
+  let todayUsers=[],weekUsers=[];
+  try{const r1=await db.from('profiles').select('*').gte('created_at',todayStart);todayUsers=r1.data||[];const r2=await db.from('profiles').select('*').gte('created_at',weekISO);weekUsers=r2.data||[];}catch{}
+  const[{data:allPosts},{data:todayPosts},{data:weekPosts},{data:postsByCmt},{data:postsByLike},{data:userFollowers}]=await Promise.all([
     db.from('posts').select('*').order('created_at',{ascending:false}),
     db.from('posts').select('*').gte('created_at',todayStart).order('created_at',{ascending:false}),
     db.from('posts').select('*').gte('created_at',weekISO).order('created_at',{ascending:false}),
@@ -1043,7 +1079,7 @@ async function loadAdminDashboard(){
   ]);
   await fetchProfiles((allUsers||[]).map(u=>u.id).concat((allPosts||[]).map(p=>p.author_id)));
   const fmtReg=d=>d.created_at?new Date(d.created_at).toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-  function userRow(u){const p=getProfile(u.id);const n=p?p.name:u.name||u.username;const av=p?p.avatar_url:'';const avS=av?`background-image:url('${av}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(n)};font-size:12px;`;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div class="av" style="width:28px;height:28px;flex-shrink:0;cursor:pointer;${avS}" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(n)}')">${av?'':esc((n||'?')[0])}</div><div style="flex:1;font-size:13px;"><strong>${esc(n)}</strong> <span style="color:#bbb;">@${esc(u.username)}</span></div><span style="font-size:11px;color:#bbb;">${fmtReg(u)}</span></div>`;}
+  function userRow(u){const p=getProfile(u.id);const n=p?p.name:u.name||u.username;const av=p?p.avatar_url:'';const avS=av?`background-image:url('${av}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(n)};font-size:12px;`;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div class="av" style="width:28px;height:28px;flex-shrink:0;cursor:pointer;${avS}" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(n)}')">${av?'':esc((n||'?')[0])}</div><div style="flex:1;font-size:13px;"><strong>${esc(n)}</strong> <span style="color:#bbb;font-size:11px;">真实姓名:${esc(u.username)} ${u.class_year?'· '+esc(u.class_year):''}</span></div><span style="font-size:11px;color:#bbb;">${fmtReg(u)}</span></div>`;}
   function postRow(p,extra){const prof=getProfile(p.author_id);const n=prof?prof.name:p.author_name;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div style="flex:1;min-width:0;font-size:13px;"><strong>${esc(n)}</strong>: <span style="color:var(--text2);">${esc((p.content||'[图片]').slice(0,40))}</span></div><span style="font-size:12px;color:var(--pk);font-weight:bold;flex-shrink:0;">${extra}</span></div>`;}
   // 评论数统计
   const cmtCount={};(postsByCmt||[]).forEach(c=>cmtCount[c.post_id]=(cmtCount[c.post_id]||0)+1);
