@@ -610,14 +610,29 @@ async function doRegister(){const u=document.getElementById('r-u').value.trim(),
 function startSession(p){const safe={...p};delete safe.password_hash;delete safe.password_salt;session=safe;localStorage.setItem('session',JSON.stringify(safe));launchApp();}
 function logout(){session=null;localStorage.removeItem('session');document.getElementById('main-app').style.display='none';document.getElementById('auth-screen').style.display='flex';postImgs=[];likedPosts=new Set();likedComments=new Set();followed=[];}
 function launchApp(){my={...session};likedPosts=new Set(JSON.parse(localStorage.getItem('lp_'+my.id)||'[]'));likedComments=new Set(JSON.parse(localStorage.getItem('lc_'+my.id)||'[]'));followed=JSON.parse(localStorage.getItem('fol_'+my.id)||'[]');document.getElementById('auth-screen').style.display='none';document.getElementById('main-app').style.display='block';init();}
+function updateMy(updates){Object.assign(my,updates);Object.assign(session,updates);localStorage.setItem('session',JSON.stringify(session));}
+function showOverlay(id){const el=document.getElementById(id);if(el){el.style.display='flex';document.body.style.overflow='hidden';}}
+function hideOverlay(id){const el=document.getElementById(id);if(el){el.style.display='none';document.body.style.overflow='';}}
+function showFull(id){const el=document.getElementById(id);if(el){el.style.display='block';document.body.style.overflow='hidden';}}
+function hideFull(id){const el=document.getElementById(id);if(el){el.style.display='none';document.body.style.overflow='';}}
+function parseImgs(raw){if(!raw)return[];let a;try{a=JSON.parse(raw);}catch{a=[raw];}return Array.isArray(a)?a.filter(Boolean):[a].filter(Boolean);}
+function renderMediaGrid(arr,gridId,rmPrefix,previewId){const el=document.getElementById(gridId);if(!el)return;el.innerHTML=arr.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="${rmPrefix}(${i})">×</div></div>`).join('');if(previewId)document.getElementById(previewId).style.display=arr.length?'block':'none';}
+async function uploadMedia(e,arr,renderFn){const r=9-arr.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{arr.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderFn();}
 
 // ── init ──────────────────────────────────────────────
 async function init(){renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);await loadFeed('all');checkNdot();const sp=new URLSearchParams(location.search);const pid=sp.get('post');const cid=sp.get('comment');if(pid){const el=document.getElementById('post-'+pid);if(el){el.classList.add('hl');setTimeout(()=>el.classList.remove('hl'),2000);el.scrollIntoView({behavior:'smooth'});}if(cid){openReply(Number(pid),'');setTimeout(()=>{const cel=document.getElementById('c-'+cid);if(cel){cel.classList.add('hl');setTimeout(()=>cel.classList.remove('hl'),2000);cel.scrollIntoView({behavior:'smooth'});}},600);}}}
 
 // ── helpers ───────────────────────────────────────────
+const SVG={heart:'<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+comment:'<svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>',
+share:'<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>',
+del:'<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+camera:'<svg style="width:22px;height:22px;fill:#ccc" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>'};
 const AVC=['#FF6699','#FF9944','#44BBFF','#55CC88','#AA88FF','#FF6644'];
 function avc(s){return AVC[(s||'?').charCodeAt(0)%AVC.length];}
 function applyAv(el,name,url,size){if(!el)return;if(url){el.style.cssText=`width:${size}px;height:${size}px;background-image:url('${url}');background-size:cover;background-position:center;font-size:0;`;el.innerText='';}else{el.style.cssText=`width:${size}px;height:${size}px;background:${avc(name)};font-size:${Math.round(size*.38)}px;`;el.innerText=(name||'?')[0];}}
+function avStyle(name,url,size){if(url)return`background-image:url('${url}');background-size:cover;background-position:center;font-size:0;`;return`background:${avc(name)};font-size:${Math.round((size||32)*.38)}px;`;}
+function avText(name,url){return url?'':(name||'?')[0];}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function escAttr(s){return esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function fmtBd(bd){if(!bd)return'未设置';const[y,m,d]=bd.split('-').map(Number);return`${y}年${m}月${d}日`;}
@@ -635,13 +650,10 @@ function lbNav(d){lbIdx=(lbIdx+d+lbImgs.length)%lbImgs.length;document.getElemen
 
 // ── render images (up to 9) ──────────────────────────
 function renderImgs(raw){
-  if(!raw)return'';
-  let a;try{a=JSON.parse(raw);}catch{a=[raw];}
-  if(!Array.isArray(a))a=[a];a=a.filter(Boolean);if(!a.length)return'';
+  const a=parseImgs(raw);if(!a.length)return'';
   const n=Math.min(a.length,9);
-  const cls=`imgs imgs-${n}`;
   const escaped=JSON.stringify(a).replace(/'/g,"\\'");
-  return`<div class="${cls}">${a.slice(0,9).map((s,i)=>s.startsWith('data:video/')?`<video src="${esc(s)}" controls playsinline style="width:100%;height:100%;object-fit:cover;border-radius:14px;max-height:360px;"></video>`:`<img src="${esc(s)}" onclick="event.stopPropagation();openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('')}</div>`;
+  return`<div class="imgs imgs-${n}">${a.slice(0,9).map((s,i)=>s.startsWith('data:video/')?`<video src="${esc(s)}" controls playsinline style="width:100%;height:100%;object-fit:cover;border-radius:14px;max-height:360px;"></video>`:`<img src="${esc(s)}" onclick="event.stopPropagation();openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('')}</div>`;
 }
 
 // ── crop modal ────────────────────────────────────────
@@ -662,10 +674,9 @@ async function confirmCrop(){
   const mode=cropMode,imgUrl=cropImgUrl,isNew=cropIsNew,posX=cropPosX,posY=cropPosY,zoom=cropZoomVal;cancelCrop();
   if(mode==='cover'){
     const pos=`${posX.toFixed(1)}% ${posY.toFixed(1)}%`;const upd={cover_pos:pos,cover_zoom:zoom};if(isNew)upd.cover_url=imgUrl;
-    await db.from('profiles').update(upd).eq('id',my.id);if(isNew)my.cover_url=imgUrl;my.cover_pos=pos;my.cover_zoom=zoom;
-    Object.assign(session,{cover_url:my.cover_url,cover_pos:pos,cover_zoom:zoom});localStorage.setItem('session',JSON.stringify(session));renderMe();
+    await db.from('profiles').update(upd).eq('id',my.id);updateMy({cover_url:isNew?imgUrl:my.cover_url,cover_pos:pos,cover_zoom:zoom});renderMe();
   }else{
-    const img=new Image();img.onload=async()=>{const scale=zoom/100,r=img.height/img.width,sw=img.width/scale,sh=sw;const sx=Math.max(0,Math.min(img.width-sw,img.width*(1-1/scale)*(posX/100)));const sy=Math.max(0,Math.min(img.height-sh,img.height*(1-1/(r*scale))*(posY/100)));const cv=document.createElement('canvas');cv.width=400;cv.height=400;cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,400,400);const b64=cv.toDataURL('image/jpeg',.85);await db.from('profiles').update({avatar_url:b64}).eq('id',my.id);my.avatar_url=b64;session.avatar_url=b64;localStorage.setItem('session',JSON.stringify(session));renderMe();applyAv(document.getElementById('cav'),my.name,b64,46);};img.src=imgUrl;
+    const img=new Image();img.onload=async()=>{const scale=zoom/100,r=img.height/img.width,sw=img.width/scale,sh=sw;const sx=Math.max(0,Math.min(img.width-sw,img.width*(1-1/scale)*(posX/100)));const sy=Math.max(0,Math.min(img.height-sh,img.height*(1-1/(r*scale))*(posY/100)));const cv=document.createElement('canvas');cv.width=400;cv.height=400;cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,400,400);const b64=cv.toDataURL('image/jpeg',.85);await db.from('profiles').update({avatar_url:b64}).eq('id',my.id);updateMy({avatar_url:b64});renderMe();applyAv(document.getElementById('cav'),my.name,b64,46);};img.src=imgUrl;
   }
 }
 function cropSetZoom(v){cropZoomVal=Number(v);getCropEl().style.backgroundSize=v+'%';}
@@ -710,16 +721,16 @@ function openSettings(){
   document.getElementById('v-settings').style.display='block';document.body.style.overflow='hidden';
 }
 function loadPrivacyUI(){const pv=(my.privacy||'').split(',');['region','constellation','birthday','bio'].forEach(k=>{const el=document.getElementById('priv-'+k);if(el)el.checked=pv.includes(k);});}
-async function savePrivacy(){const fields=['region','constellation','birthday','bio'];const pv=fields.filter(k=>document.getElementById('priv-'+k)?.checked).join(',');my.privacy=pv;session.privacy=pv;localStorage.setItem('session',JSON.stringify(session));await db.from('profiles').update({privacy:pv}).eq('id',my.id);}
+async function savePrivacy(){const fields=['region','constellation','birthday','bio'];const pv=fields.filter(k=>document.getElementById('priv-'+k)?.checked).join(',');updateMy({privacy:pv});await db.from('profiles').update({privacy:pv}).eq('id',my.id);}
 function isPrivate(profile,field){return(profile.privacy||'').split(',').includes(field);}
-function closeSettings(){document.getElementById('v-settings').style.display='none';document.body.style.overflow='';}
+function closeSettings(){hideFull('v-settings');}
 function updateSettingsVals(){
   const sc=document.getElementById('set-city');if(sc)sc.innerText=(my.region||'未设置')+' ›';
   const ss=document.getElementById('set-const');if(ss)ss.innerText=(my.constellation||'未设置')+' ›';
   const sb=document.getElementById('set-bd');if(sb)sb.innerText=fmtBd(my.birthday)+' ›';
   const scy=document.getElementById('set-cy');if(scy)scy.innerText=(my.class_year||'未设置')+' ›';
 }
-async function saveProfile(){let name=document.getElementById('i-name').value.trim()||my.name;const bio=document.getElementById('i-bio').value.trim();if(name.length<1||name.length>20){alert('昵称长度1-20个字符');return;}if(/[<>"';&]/.test(name)){alert('昵称不能包含特殊符号');return;}const{error}=await db.from('profiles').update({name,bio}).eq('id',my.id);if(error){alert('保存失败：'+error.message);return;}my.name=name;my.bio=bio;session.name=name;session.bio=bio;localStorage.setItem('session',JSON.stringify(session));renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);alert('已保存');}
+async function saveProfile(){let name=document.getElementById('i-name').value.trim()||my.name;const bio=document.getElementById('i-bio').value.trim();if(name.length<1||name.length>20){alert('昵称长度1-20个字符');return;}if(/[<>"';&]/.test(name)){alert('昵称不能包含特殊符号');return;}const{error}=await db.from('profiles').update({name,bio}).eq('id',my.id);if(error){alert('保存失败：'+error.message);return;}updateMy({name,bio});renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);alert('已保存');}
 
 // ── profile tabs (作品/喜欢) ─────────────────────────
 function switchMeTab(tab){
@@ -764,10 +775,10 @@ function postCard(p,cc){
   ${renderImgs(p.image_url)}
   <div class="pacts">
     <div class="act${lk?' liked':''}" data-id="${p.id}" data-author="${esc(p.author_id)}" data-likes="${p.likes}" onclick="likePost(this)">
-      <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span>${p.likes}</span></div>
-    <div class="act" onclick="openReply(${p.id},'${esc(p.author_id)}')"><svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg><span>${cc}</span></div>
-    <div class="act" onclick="sharePost(${p.id})"><svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg><span>分享</span></div>
-    ${own?`<div class="act del" onclick="delPost(${p.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span>删除</span></div>`:''}
+      ${SVG.heart}<span>${p.likes}</span></div>
+    <div class="act" onclick="openReply(${p.id},'${esc(p.author_id)}')">${SVG.comment}<span>${cc}</span></div>
+    <div class="act" onclick="sharePost(${p.id})">${SVG.share}<span>分享</span></div>
+    ${own?`<div class="act del" onclick="delPost(${p.id})">${SVG.del}<span>删除</span></div>`:''}
   </div>
 </div></div>`;}
 
@@ -809,37 +820,37 @@ async function sharePost(id){
 }
 
 // ── compose (max 9 images) ───────────────────────────
-async function handleFiles(e){const r=9-postImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{postImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderPgrid();}
-function renderPgrid(){document.getElementById('pgrid').innerHTML=postImgs.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="rmImg(${i})">×</div></div>`).join('');}
+function handleFiles(e){uploadMedia(e,postImgs,renderPgrid);}
+function renderPgrid(){renderMediaGrid(postImgs,'pgrid','rmImg');}
 function rmImg(i){postImgs.splice(i,1);renderPgrid();}
 async function publish(){const txt=document.getElementById('inp').value.trim();if(!txt&&!postImgs.length)return;const iv=postImgs.length?JSON.stringify(postImgs):null;const{error}=await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:txt,image_url:iv,likes:0}]);if(error){alert('发帖失败：'+error.message);return;}document.getElementById('inp').value='';postImgs=[];renderPgrid();feedPage={};feedAllLoaded={};await loadFeed('all');}
 
 // ── star / city / birthday ────────────────────────────
-function openConstMenu(){document.getElementById('menu-const').style.display='flex';}
-function closeConst(){document.getElementById('menu-const').style.display='none';}
-async function pickConst(n){const{error}=await db.from('profiles').update({constellation:n}).eq('id',my.id);if(!error){my.constellation=n;session.constellation=n;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeConst();}
+function openConstMenu(){showOverlay('menu-const');}
+function closeConst(){hideOverlay('menu-const');}
+async function pickConst(n){const{error}=await db.from('profiles').update({constellation:n}).eq('id',my.id);if(!error){updateMy({constellation:n});renderMe();}closeConst();}
 
 const COUNTRIES=[{f:'🇨🇳',n:'中国',c:['北京','上海','广州','深圳','杭州','成都','武汉','西安','重庆','南京']},{f:'🇯🇵',n:'日本',c:['东京','大阪','京都','名古屋','福冈','横滨']},{f:'🇰🇷',n:'韩国',c:['首尔','釜山','仁川','大邱']},{f:'🇺🇸',n:'美国',c:['纽约','洛杉矶','旧金山','芝加哥','西雅图','波士顿']},{f:'🇬🇧',n:'英国',c:['伦敦','曼彻斯特','伯明翰','爱丁堡']},{f:'🇫🇷',n:'法国',c:['巴黎','里昂','马赛','尼斯']},{f:'🇩🇪',n:'德国',c:['柏林','慕尼黑','汉堡','法兰克福']},{f:'🇮🇹',n:'意大利',c:['罗马','米兰','威尼斯','佛罗伦萨']},{f:'🇪🇸',n:'西班牙',c:['巴塞罗那','马德里','塞维利亚']},{f:'🇵🇹',n:'葡萄牙',c:['里斯本','波尔图']},{f:'🇳🇱',n:'荷兰',c:['阿姆斯特丹','鹿特丹']},{f:'🇨🇭',n:'瑞士',c:['苏黎世','日内瓦']},{f:'🇸🇪',n:'瑞典',c:['斯德哥尔摩','哥德堡']},{f:'🇦🇺',n:'澳大利亚',c:['悉尼','墨尔本','布里斯班']},{f:'🇨🇦',n:'加拿大',c:['多伦多','温哥华','蒙特利尔']},{f:'🇳🇿',n:'新西兰',c:['奥克兰','惠灵顿']},{f:'🇲🇽',n:'墨西哥',c:['墨西哥城','瓜达拉哈拉']},{f:'🇧🇷',n:'巴西',c:['圣保罗','里约热内卢']},{f:'🇦🇷',n:'阿根廷',c:['布宜诺斯艾利斯']},{f:'🇸🇬',n:'新加坡',c:['新加坡']},{f:'🇭🇰',n:'香港',c:['香港岛','九龙','新界']},{f:'🇹🇼',n:'台湾',c:['台北','台中','高雄','台南']},{f:'🇹🇭',n:'泰国',c:['曼谷','清迈','芭提雅','普吉']},{f:'🇲🇾',n:'马来西亚',c:['吉隆坡','槟城','新山']},{f:'🇮🇩',n:'印度尼西亚',c:['雅加达','巴厘岛']},{f:'🇻🇳',n:'越南',c:['河内','胡志明市']},{f:'🇮🇳',n:'印度',c:['孟买','新德里','班加罗尔']},{f:'🇦🇪',n:'阿联酋',c:['迪拜','阿布扎比']},{f:'🇷🇺',n:'俄罗斯',c:['莫斯科','圣彼得堡']},{f:'🇿🇦',n:'南非',c:['开普敦','约翰内斯堡']}];
-function openCityMenu(){selCountry=null;showCountries();document.getElementById('menu-city').style.display='flex';}
-function closeCity(){document.getElementById('menu-city').style.display='none';}
+function openCityMenu(){selCountry=null;showCountries();showOverlay('menu-city');}
+function closeCity(){hideOverlay('menu-city');}
 function showCountries(){selCountry=null;document.getElementById('city-title').innerText='选择国家';document.getElementById('city-back').style.display='none';document.getElementById('city-list').innerHTML=COUNTRIES.map(c=>`<div class="mi" onclick="showCities('${c.n}')">${c.f} ${c.n}</div>`).join('')+`<div class="mi cancel" onclick="closeCity()">取消</div>`;}
 function showCities(cn){selCountry=COUNTRIES.find(c=>c.n===cn);document.getElementById('city-title').innerText=selCountry.f+' '+selCountry.n;document.getElementById('city-back').style.display='block';document.getElementById('city-list').innerHTML=selCountry.c.map(city=>`<div class="mi" onclick="pickCity('${city}')">${city}</div>`).join('')+`<div class="mi cancel" onclick="closeCity()">取消</div>`;}
-async function pickCity(city){const val=selCountry.n+' · '+city;const{error}=await db.from('profiles').update({region:val}).eq('id',my.id);if(!error){my.region=val;session.region=val;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeCity();}
+async function pickCity(city){const val=selCountry.n+' · '+city;const{error}=await db.from('profiles').update({region:val}).eq('id',my.id);if(!error){updateMy({region:val});renderMe();}closeCity();}
 
 const BDY=Array.from({length:127},(_,i)=>2026-i),BDM=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 function dim(y,m){return new Date(y,m,0).getDate();}
-function openBdMenu(){bdStep='year';bdY=null;bdM=null;renderBd();document.getElementById('menu-bd').style.display='flex';}
-function closeBd(){document.getElementById('menu-bd').style.display='none';}
+function openBdMenu(){bdStep='year';bdY=null;bdM=null;renderBd();showOverlay('menu-bd');}
+function closeBd(){hideOverlay('menu-bd');}
 function bdBack(){if(bdStep==='day'){bdStep='month';bdM=null;}else{bdStep='year';bdY=null;}renderBd();}
 function renderBd(){const t={year:'选择出生年份',month:`${bdY}年 · 选择月份`,day:`${bdY}年${bdM}月 · 选择日`};document.getElementById('bd-title').innerText=t[bdStep];document.getElementById('bd-back').style.display=bdStep==='year'?'none':'block';let h='';if(bdStep==='year')h=BDY.map(y=>`<div class="mi" onclick="bdYear(${y})">${y} 年</div>`).join('');else if(bdStep==='month')h=BDM.map((m,i)=>`<div class="mi" onclick="bdMonth(${i+1})">${m}</div>`).join('');else h=Array.from({length:dim(bdY,bdM)},(_,i)=>i+1).map(d=>`<div class="mi" onclick="bdDay(${d})">${d} 日</div>`).join('');document.getElementById('bd-list').innerHTML=h+`<div class="mi cancel" onclick="closeBd()">取消</div>`;}
 function bdYear(y){bdY=y;bdStep='month';renderBd();}
 function bdMonth(m){bdM=m;bdStep='day';renderBd();}
-async function bdDay(d){const v=`${bdY}-${String(bdM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const{error}=await db.from('profiles').update({birthday:v}).eq('id',my.id);if(!error){my.birthday=v;session.birthday=v;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeBd();}
+async function bdDay(d){const v=`${bdY}-${String(bdM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const{error}=await db.from('profiles').update({birthday:v}).eq('id',my.id);if(!error){updateMy({birthday:v});renderMe();}closeBd();}
 
 // ── class year ──────────────────────────────────────────
-function openClassYearMenu(){document.getElementById('menu-cy').style.display='flex';}
-function closeClassYear(){document.getElementById('menu-cy').style.display='none';}
-async function pickClassYear(cy){const{error}=await db.from('profiles').update({class_year:cy}).eq('id',my.id);if(!error){my.class_year=cy;session.class_year=cy;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeClassYear();}
+function openClassYearMenu(){showOverlay('menu-cy');}
+function closeClassYear(){hideOverlay('menu-cy');}
+async function pickClassYear(cy){const{error}=await db.from('profiles').update({class_year:cy}).eq('id',my.id);if(!error){updateMy({class_year:cy});renderMe();}closeClassYear();}
 
 // ── change password ─────────────────────────────────────
 async function changePassword(){
@@ -880,7 +891,7 @@ async function loadMsgPage(){
 }
 
 async function openNotifOverlay(){
-  document.getElementById('notif-overlay').style.display='block';document.body.style.overflow='hidden';
+  showFull('notif-overlay');
   const{data}=await db.from('notifications').select('*').eq('recipient_id',my.id).order('created_at',{ascending:false}).limit(50);
   await db.from('notifications').update({is_read:true}).eq('recipient_id',my.id).eq('is_read',false);
   document.getElementById('ndot').style.display='none';document.getElementById('notif-badge').style.display='none';
@@ -889,7 +900,7 @@ async function openNotifOverlay(){
   if(!data||!data.length){cont.innerHTML='<div class="empty">暂无通知</div>';return;}
   cont.innerHTML=data.map(n=>`<div class="nrow${n.is_read?'':' unread'}"><div style="font-size:22px;flex-shrink:0;">${icons[n.type]||'🔔'}</div><div style="flex:1;min-width:0;"><div style="font-size:14px"><strong>${esc(n.sender_name)}</strong> ${esc(n.message)}</div><div class="ntime">${fmtTime(n.created_at)}</div></div></div>`).join('');
 }
-function closeNotifOverlay(){document.getElementById('notif-overlay').style.display='none';document.body.style.overflow='';}
+function closeNotifOverlay(){hideFull('notif-overlay');}
 
 async function checkNdot(){const{count}=await db.from('notifications').select('*',{count:'exact',head:true}).eq('recipient_id',my.id).eq('is_read',false);document.getElementById('ndot').style.display=count>0?'block':'none';}
 
@@ -904,16 +915,16 @@ async function loadDmList(){
 }
 
 // ── chat (max 9 images) ──────────────────────────────
-async function openChat(uid,name){chatUid=uid;chatName=name;chatImgs=[];document.getElementById('chat-title').innerText=name;document.getElementById('chat-msgs').innerHTML='<div class="empty">加载中…</div>';document.getElementById('chat-img-preview').style.display='none';document.getElementById('v-chat').style.display='flex';document.body.style.overflow='hidden';await loadChatMsgs();}
-function closeChat(){document.getElementById('v-chat').style.display='none';document.body.style.overflow='';chatUid=null;chatImgs=[];}
-async function loadChatMsgs(){const{data}=await db.from('messages').select('*').or(`and(sender_id.eq.${my.id},recipient_id.eq.${chatUid}),and(sender_id.eq.${chatUid},recipient_id.eq.${my.id})`).order('created_at',{ascending:true});await db.from('messages').update({is_read:true}).eq('recipient_id',my.id).eq('sender_id',chatUid);const cont=document.getElementById('chat-msgs');if(!data||!data.length){cont.innerHTML='<div class="empty">发送第一条消息吧</div>';return;}cont.innerHTML=data.map(m=>{const mine=m.sender_id===my.id;const avStyle=mine?(my.avatar_url?`background-image:url('${my.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(my.name)};`):`background:${avc(m.sender_name)};`;const avTxt=mine?(my.avatar_url?'':(my.name||'?')[0]):(m.sender_name||'?')[0];let imgHtml='';if(m.image_url){let imgs;try{imgs=JSON.parse(m.image_url);}catch{imgs=[m.image_url];}if(!Array.isArray(imgs))imgs=[imgs];const escaped=JSON.stringify(imgs).replace(/'/g,"\\'");imgHtml=imgs.map((s,i)=>`<img class="chat-img" src="${esc(s)}" onclick="openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('');}return`<div class="chat-msg${mine?' mine':''}"><div class="av" style="width:34px;height:34px;flex-shrink:0;font-size:13px;${avStyle}">${esc(avTxt)}</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'};">${m.content?`<div class="chat-bubble">${esc(m.content)}</div>`:''}${imgHtml}<div style="font-size:11px;color:#aaa;margin-top:3px;">${fmtTime(m.created_at)}</div></div></div>`;}).join('');cont.scrollTop=cont.scrollHeight;}
-async function handleChatImgs(e){const r=9-chatImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{chatImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderChatPgrid();}
-function renderChatPgrid(){const cont=document.getElementById('chat-pgrid');cont.innerHTML=chatImgs.map((s,i)=>`<div class="pwrap"><img class="pthumb" src="${s}"><div class="pdel" onclick="rmChatImg(${i})">×</div></div>`).join('');document.getElementById('chat-img-preview').style.display=chatImgs.length?'block':'none';}
+async function openChat(uid,name){chatUid=uid;chatName=name;chatImgs=[];document.getElementById('chat-title').innerText=name;document.getElementById('chat-msgs').innerHTML='<div class="empty">加载中…</div>';document.getElementById('chat-img-preview').style.display='none';showOverlay('v-chat');await loadChatMsgs();}
+function closeChat(){hideOverlay('v-chat');chatUid=null;chatImgs=[];}
+async function loadChatMsgs(){const{data}=await db.from('messages').select('*').or(`and(sender_id.eq.${my.id},recipient_id.eq.${chatUid}),and(sender_id.eq.${chatUid},recipient_id.eq.${my.id})`).order('created_at',{ascending:true});await db.from('messages').update({is_read:true}).eq('recipient_id',my.id).eq('sender_id',chatUid);const cont=document.getElementById('chat-msgs');if(!data||!data.length){cont.innerHTML='<div class="empty">发送第一条消息吧</div>';return;}cont.innerHTML=data.map(m=>{const mine=m.sender_id===my.id;const avStyle=mine?(my.avatar_url?`background-image:url('${my.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(my.name)};`):`background:${avc(m.sender_name)};`;const avTxt=mine?(my.avatar_url?'':(my.name||'?')[0]):(m.sender_name||'?')[0];let imgHtml='';if(m.image_url){const imgs=parseImgs(m.image_url);if(imgs.length){const escaped=JSON.stringify(imgs).replace(/'/g,"\\'");imgHtml=imgs.map((s,i)=>`<img class="chat-img" src="${esc(s)}" onclick="openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('');}return`<div class="chat-msg${mine?' mine':''}"><div class="av" style="width:34px;height:34px;flex-shrink:0;font-size:13px;${avStyle}">${esc(avTxt)}</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'};">${m.content?`<div class="chat-bubble">${esc(m.content)}</div>`:''}${imgHtml}<div style="font-size:11px;color:#aaa;margin-top:3px;">${fmtTime(m.created_at)}</div></div></div>`;}).join('');cont.scrollTop=cont.scrollHeight;}
+function handleChatImgs(e){uploadMedia(e,chatImgs,renderChatPgrid);}
+function renderChatPgrid(){renderMediaGrid(chatImgs,'chat-pgrid','rmChatImg','chat-img-preview');}
 function rmChatImg(i){chatImgs.splice(i,1);renderChatPgrid();}
 async function sendMsg(){const txt=document.getElementById('chat-inp').value.trim();if(!txt&&!chatImgs.length)return;const imgData=chatImgs.length?JSON.stringify(chatImgs):null;const{error}=await db.from('messages').insert([{sender_id:my.id,sender_name:my.name,recipient_id:chatUid,recipient_name:chatName,content:txt,image_url:imgData}]);if(error){alert('发送失败：'+error.message);return;}document.getElementById('chat-inp').value='';chatImgs=[];renderChatPgrid();await loadChatMsgs();}
 
 // ── user profile view ─────────────────────────────────
-async function openUser(uid,uname){if(uid===my.id){switchNav('me');return;}viewingUid=uid;viewingName=uname;const panel=document.getElementById('v-user');document.getElementById('u-hdn').innerText=uname;document.getElementById('u-name').innerText='加载中…';document.getElementById('u-posts').innerHTML='<div class="empty">加载中…</div>';updateFBtn();panel.style.display='block';document.body.style.overflow='hidden';
+async function openUser(uid,uname){if(uid===my.id){switchNav('me');return;}viewingUid=uid;viewingName=uname;const panel=document.getElementById('v-user');document.getElementById('u-hdn').innerText=uname;document.getElementById('u-name').innerText='加载中…';document.getElementById('u-posts').innerHTML='<div class="empty">加载中…</div>';updateFBtn();showFull('v-user');
   const{data:p}=await db.from('profiles').select('id,name,avatar_url,bio,region,constellation,birthday,cover_url,cover_pos,cover_zoom,privacy').eq('id',uid).maybeSingle();
   const ucov=document.getElementById('u-cover'),uav=document.getElementById('u-av');
   if(p){document.getElementById('u-name').innerText=p.name||uname;document.getElementById('u-bio').innerText=isPrivate(p,'bio')?'':p.bio||'暂无简介';document.getElementById('u-city').innerText=isPrivate(p,'region')?'':'📍 '+(p.region||'未设置');document.getElementById('u-city').style.display=isPrivate(p,'region')?'none':'';document.getElementById('u-const').innerText=isPrivate(p,'constellation')?'':'✨ '+(p.constellation||'未设置');document.getElementById('u-const').style.display=isPrivate(p,'constellation')?'none':'';document.getElementById('u-birth').innerText=isPrivate(p,'birthday')?'':'🎂 '+fmtBd(p.birthday);document.getElementById('u-birth').style.display=isPrivate(p,'birthday')?'none':'';renderCoverBanner(ucov,p.cover_url,p.cover_pos,p.cover_zoom);applyAv(uav,p.name||uname,p.avatar_url,80);}
@@ -931,7 +942,7 @@ async function openUser(uid,uname){if(uid===my.id){switchNav('me');return;}viewi
   const cnt={};(comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);
   document.getElementById('u-posts').innerHTML=posts.map(p=>postCard(p,cnt[p.id]||0)).join('');
 }
-function closeUser(){document.getElementById('v-user').style.display='none';document.body.style.overflow='';viewingUid=null;}
+function closeUser(){hideFull('v-user');viewingUid=null;}
 async function toggleFollow(){
   if(!viewingUid)return;const i=followed.indexOf(viewingUid);
   if(i>=0){followed.splice(i,1);await db.from('follows').delete().eq('follower_id',my.id).eq('following_id',viewingUid);}
@@ -946,8 +957,8 @@ function closeReply(){document.getElementById('modal-reply').style.display='none
 function setRto(cid,name){replyingTo={id:cid,name};document.getElementById('rto-name').innerText=name;document.getElementById('rto-bar').style.display='flex';document.getElementById('reply-inp').focus();}
 function cancelRto(){replyingTo=null;document.getElementById('rto-bar').style.display='none';}
 
-async function handleReplyImgs(e){const r=9-replyImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{replyImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderReplyPgrid();}
-function renderReplyPgrid(){document.getElementById('reply-pgrid').innerHTML=replyImgs.map((s,i)=>`<div class="pwrap"><img class="pthumb" src="${s}"><div class="pdel" onclick="rmReplyImg(${i})">×</div></div>`).join('');document.getElementById('reply-img-preview').style.display=replyImgs.length?'block':'none';}
+function handleReplyImgs(e){uploadMedia(e,replyImgs,renderReplyPgrid);}
+function renderReplyPgrid(){renderMediaGrid(replyImgs,'reply-pgrid','rmReplyImg','reply-img-preview');}
 function rmReplyImg(i){replyImgs.splice(i,1);renderReplyPgrid();}
 
 async function renderReply(){
@@ -965,9 +976,9 @@ async function renderReply(){
     const avC=dAv?'':(dName||'?')[0];
     const isLikedC=likedComments.has(c.id);
     let imgHtml='';
-    if(c.image_url){let imgs;try{imgs=JSON.parse(c.image_url);}catch{imgs=[c.image_url];}if(!Array.isArray(imgs))imgs=[imgs];const escaped=JSON.stringify(imgs).replace(/'/g,"\\'");imgHtml=`<div class="pgrid" style="margin-top:6px;">${imgs.slice(0,9).map((s,i)=>`<img class="pthumb" src="${esc(s)}" style="cursor:pointer;width:60px;height:60px;" onclick="openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('')}</div>`;}
+    if(c.image_url){const imgs=parseImgs(c.image_url);if(imgs.length){const escaped=JSON.stringify(imgs).replace(/'/g,"\\'");imgHtml=`<div class="pgrid" style="margin-top:6px;">${imgs.slice(0,9).map((s,i)=>`<img class="pthumb" src="${esc(s)}" style="cursor:pointer;width:60px;height:60px;" onclick="openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('')}</div>`;}
     const canDel=c.author_id===my.id||my.id===ADMIN_ID;
-    return`<div class="cmt-row" id="c-${c.id}"><div class="av" style="width:${isChild?28:32}px;height:${isChild?28:32}px;flex-shrink:0;cursor:pointer;${avS}" onclick="openUser('${esc(c.author_id)}','${esc(dName)}')">${esc(avC)}</div><div class="cmt-body"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="cmt-name">${esc(dName)}${isHost?'<span class="badge-host">作者</span>':''}${isChild&&c.reply_to_name?` <span style="color:var(--text2);font-weight:normal;font-size:12px;">▸ ${esc(c.reply_to_name)}</span>`:''}</div><span style="font-size:11px;color:#bbb;flex-shrink:0;">${fmtTime(c.created_at)}</span></div>${loc?`<div class="cmt-loc">${esc(loc)}</div>`:''}<div class="cmt-txt">${esc(c.content)}</div>${imgHtml}<div class="pacts" style="margin-top:6px;"><div class="act${isLikedC?' liked':''}" onclick="likeComment(${c.id},this,${c.likes||0})"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span>${c.likes||0}</span></div><div class="act" onclick="setRto(${c.id},'${esc(dName)}')"><svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg><span>回复</span></div><div class="act" onclick="shareComment(${c.id})"><svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg><span>分享</span></div>${canDel?`<div class="act del" onclick="delComment(${c.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span>删除</span></div>`:''}</div></div></div>`;
+    return`<div class="cmt-row" id="c-${c.id}"><div class="av" style="width:${isChild?28:32}px;height:${isChild?28:32}px;flex-shrink:0;cursor:pointer;${avS}" onclick="openUser('${esc(c.author_id)}','${esc(dName)}')">${esc(avC)}</div><div class="cmt-body"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="cmt-name">${esc(dName)}${isHost?'<span class="badge-host">作者</span>':''}${isChild&&c.reply_to_name?` <span style="color:var(--text2);font-weight:normal;font-size:12px;">▸ ${esc(c.reply_to_name)}</span>`:''}</div><span style="font-size:11px;color:#bbb;flex-shrink:0;">${fmtTime(c.created_at)}</span></div>${loc?`<div class="cmt-loc">${esc(loc)}</div>`:''}<div class="cmt-txt">${esc(c.content)}</div>${imgHtml}<div class="pacts" style="margin-top:6px;"><div class="act${isLikedC?' liked':''}" onclick="likeComment(${c.id},this,${c.likes||0})">${SVG.heart}<span>${c.likes||0}</span></div><div class="act" onclick="setRto(${c.id},'${esc(dName)}')">${SVG.comment}<span>回复</span></div><div class="act" onclick="shareComment(${c.id})">${SVG.share}<span>分享</span></div>${canDel?`<div class="act del" onclick="delComment(${c.id})">${SVG.del}<span>删除</span></div>`:''}</div></div></div>`;
   }
   let html='';
   roots.forEach(r=>{
@@ -1084,7 +1095,7 @@ async function adminEditUser(uid,curName,curCy,curBio){
   const{error}=await db.from('profiles').update(upd).eq('id',uid);
   if(error){alert('编辑失败：'+error.message);return;}
   delete profileCache[uid];
-  if(uid===my.id){my.name=name||uid;my.class_year=cy||'';my.bio=bio||'';Object.assign(session,{name:my.name,class_year:my.class_year,bio:my.bio});localStorage.setItem('session',JSON.stringify(session));renderMe();}
+  if(uid===my.id){updateMy({name:name||uid,class_year:cy||'',bio:bio||''});renderMe();}
   alert('用户资料已更新');loadAdminUsers();
 }
 async function adminResetProfile(uid){if(!confirm('重置该用户所有信息？头像、昵称、简介、地区、星座、生日将全部归零。'))return;await db.from('profiles').update({avatar_url:'',bio:'',name:uid,region:'',constellation:'',birthday:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100,privacy:''}).eq('id',uid);delete profileCache[uid];alert('已重置全部资料');loadAdminUsers();}
@@ -1129,7 +1140,7 @@ async function loadAdminReports(){
   initVoteOptions();
 }
 let adminMedia={broadcast:[],qa:[]};
-async function handleAdminMedia(e,type){const arr=adminMedia[type];const r=9-arr.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{arr.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderAdminPgrid(type);}
+function handleAdminMedia(e,type){const arr=adminMedia[type];uploadMedia(e,arr,()=>renderAdminPgrid(type));}
 function rmAdminMedia(type,i){adminMedia[type].splice(i,1);renderAdminPgrid(type);}
 function renderAdminPgrid(type){const arr=adminMedia[type];document.getElementById('pgrid-'+type).innerHTML=arr.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="rmAdminMedia('${type}',${i})">×</div></div>`).join('');}
 async function sendBroadcast(){
