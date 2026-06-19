@@ -734,9 +734,12 @@ async function loadLikedPosts(){
   if(!likedPosts.size){cont.innerHTML='<div class="empty">还没有点赞的帖子</div>';return;}
   const ids=[...likedPosts];
   const{data:posts}=await db.from('posts').select('*').in('id',ids).order('created_at',{ascending:false});
-  const{data:comms}=await db.from('comments').select('post_id');
   if(!posts||!posts.length){cont.innerHTML='<div class="empty">还没有点赞的帖子</div>';return;}
-  await fetchProfiles(posts.map(p=>p.author_id));
+  const postIds=posts.map(p=>p.id);
+  const[{data:comms}]=await Promise.all([
+    db.from('comments').select('post_id').in('post_id',postIds),
+    fetchProfiles(posts.map(p=>p.author_id))
+  ]);
   const cnt={};(comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);
   cont.innerHTML=posts.map(p=>postCard(p,cnt[p.id]||0)).join('');
 }
@@ -782,11 +785,14 @@ async function loadFeed(type,append=false){
   if(type==='me')q=q.eq('author_id',my.id);
   else if(type==='follow')q=q.in('author_id',followed);
   const{data:posts}=await q;
-  const{data:comms}=await db.from('comments').select('post_id');
   if(!posts||!posts.length){if(!append)cont.innerHTML='<div class="empty">暂无内容</div>';feedAllLoaded[type]=true;const lm=document.getElementById('loadmore-'+type);if(lm)lm.remove();return;}
   if(posts.length<PAGE_SIZE)feedAllLoaded[type]=true;
   feedPage[type]++;
-  await fetchProfiles(posts.map(p=>p.author_id));
+  const postIds=posts.map(p=>p.id);
+  const[{data:comms}]=await Promise.all([
+    db.from('comments').select('post_id').in('post_id',postIds),
+    fetchProfiles(posts.map(p=>p.author_id))
+  ]);
   const cnt={};(comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);
   const html=posts.map(p=>postCard(p,cnt[p.id]||0)).join('');
   if(append)cont.insertAdjacentHTML('beforeend',html);else cont.innerHTML=html;
@@ -918,17 +924,21 @@ async function openUser(uid,uname){if(uid===my.id){switchNav('me');return;}viewi
   const ucov=document.getElementById('u-cover'),uav=document.getElementById('u-av');
   if(p){document.getElementById('u-name').innerText=p.name||uname;document.getElementById('u-bio').innerText=isPrivate(p,'bio')?'':p.bio||'暂无简介';document.getElementById('u-city').innerText=isPrivate(p,'region')?'':'📍 '+(p.region||'未设置');document.getElementById('u-city').style.display=isPrivate(p,'region')?'none':'';document.getElementById('u-const').innerText=isPrivate(p,'constellation')?'':'✨ '+(p.constellation||'未设置');document.getElementById('u-const').style.display=isPrivate(p,'constellation')?'none':'';document.getElementById('u-birth').innerText=isPrivate(p,'birthday')?'':'🎂 '+fmtBd(p.birthday);document.getElementById('u-birth').style.display=isPrivate(p,'birthday')?'none':'';renderCoverBanner(ucov,p.cover_url,p.cover_pos,p.cover_zoom);applyAv(uav,p.name||uname,p.avatar_url,80);}
   else{document.getElementById('u-name').innerText=uname;renderCoverBanner(ucov,'','50% 50%',100);applyAv(uav,uname,null,80);}
-  const[{data:posts},{data:comms},{data:uPosts},{count:uFollowers}]=await Promise.all([
+  const[{data:posts},{data:uPosts},{count:uFollowers}]=await Promise.all([
     db.from('posts').select('*').eq('author_id',uid).order('created_at',{ascending:false}),
-    db.from('comments').select('post_id'),
     db.from('posts').select('likes').eq('author_id',uid),
     db.from('follows').select('*',{count:'exact',head:true}).eq('following_id',uid)
   ]);
+  let cnt={};
+  if(posts&&posts.length){
+    const postIds=posts.map(p=>p.id);
+    const{data:comms}=await db.from('comments').select('post_id').in('post_id',postIds);
+    (comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);
+  }
   document.getElementById('u-likes').innerText=(uPosts||[]).reduce((s,p)=>s+(p.likes||0),0);
   document.getElementById('u-followers').innerText=uFollowers||0;
   document.getElementById('u-following').innerText='—';
   if(!posts||!posts.length){document.getElementById('u-posts').innerHTML='<div class="empty">TA 还没有发过帖子</div>';return;}
-  const cnt={};(comms||[]).forEach(c=>cnt[c.post_id]=(cnt[c.post_id]||0)+1);
   document.getElementById('u-posts').innerHTML=posts.map(p=>postCard(p,cnt[p.id]||0)).join('');
 }
 function closeUser(){document.getElementById('v-user').style.display='none';document.body.style.overflow='';viewingUid=null;}
