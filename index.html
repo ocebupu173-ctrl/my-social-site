@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="dns-prefetch" href="https://podskdvqrhxvhnwylvsx.supabase.co">
+<link rel="preconnect" href="https://podskdvqrhxvhnwylvsx.supabase.co">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://podskdvqrhxvhnwylvsx.supabase.co wss://podskdvqrhxvhnwylvsx.supabase.co;">
 <title>极简社交</title>
 <style>
@@ -113,10 +115,16 @@ textarea.ef{resize:none;min-height:70px;}
 .view{display:none;opacity:0;transform:translateY(12px);}.view.on{display:block;animation:viewIn .45s cubic-bezier(.16,1,.3,1) forwards;}
 @keyframes viewIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 @keyframes postIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
-.post{animation:postIn .4s cubic-bezier(.16,1,.3,1) both;}
-.act{transition:color .2s,transform .15s;}.act:active{transform:scale(.85);}
+.post{animation:postIn .4s cubic-bezier(.16,1,.3,1) both;will-change:transform,opacity;}
+.act{transition:color .2s,transform .15s;will-change:transform;}.act:active{transform:scale(.85);}
 .act.liked svg{animation:likePop .35s cubic-bezier(.16,1,.3,1);}
 @keyframes likePop{0%{transform:scale(1);}40%{transform:scale(1.3);}100%{transform:scale(1);}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skeleton{background:linear-gradient(90deg,var(--border2) 25%,var(--border) 50%,var(--border2) 75%);background-size:800px 100%;animation:shimmer 1.5s infinite;border-radius:8px;}
+.skel-av{width:46px;height:46px;border-radius:50%;flex-shrink:0;}
+.skel-line{height:14px;margin-bottom:8px;}.skel-line.short{width:60%;}.skel-line.medium{width:80%;}
+.skel-post{display:flex;gap:12px;padding:15px;border-bottom:1px solid var(--border);}
+.skel-body{flex:1;min-width:0;padding-top:4px;}
 .empty{padding:40px;text-align:center;color:#bbb;font-size:15px;}
 
 .theme-section{padding:16px 20px;}
@@ -611,9 +619,10 @@ function startSession(p){const safe={...p};delete safe.password_hash;delete safe
 function logout(){session=null;localStorage.removeItem('session');document.getElementById('main-app').style.display='none';document.getElementById('auth-screen').style.display='flex';postImgs=[];likedPosts=new Set();likedComments=new Set();followed=[];}
 async function launchApp(){my={...session};likedPosts=new Set(JSON.parse(localStorage.getItem('lp_'+my.id)||'[]'));likedComments=new Set(JSON.parse(localStorage.getItem('lc_'+my.id)||'[]'));followed=JSON.parse(localStorage.getItem('fol_'+my.id)||'[]');document.getElementById('auth-screen').style.display='none';document.getElementById('main-app').style.display='block';const{data}=await db.from('follows').select('following_id').eq('follower_id',my.id);if(data&&data.length){followed=data.map(f=>f.following_id);localStorage.setItem('fol_'+my.id,JSON.stringify(followed));}init();}
 // ── init ──────────────────────────────────────────────
-async function init(){renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);await loadFeed('all');checkNdot();const sp=new URLSearchParams(location.search);const pid=sp.get('post');const cid=sp.get('comment');if(pid){const el=document.getElementById('post-'+pid);if(el){el.classList.add('hl');setTimeout(()=>el.classList.remove('hl'),2000);el.scrollIntoView({behavior:'smooth'});}if(cid){openReply(Number(pid),'');setTimeout(()=>{const cel=document.getElementById('c-'+cid);if(cel){cel.classList.add('hl');setTimeout(()=>cel.classList.remove('hl'),2000);cel.scrollIntoView({behavior:'smooth'});}},600);}}}
+async function init(){renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);await loadFeed('all');setTimeout(checkNdot,500);setTimeout(()=>{if(document.getElementById('v-msg').classList.contains('on'))loadMsgPage();},1000);const sp=new URLSearchParams(location.search);const pid=sp.get('post');const cid=sp.get('comment');if(pid){const el=document.getElementById('post-'+pid);if(el){el.classList.add('hl');setTimeout(()=>el.classList.remove('hl'),2000);el.scrollIntoView({behavior:'smooth'});}if(cid){setTimeout(()=>{openReply(Number(pid),'');setTimeout(()=>{const cel=document.getElementById('c-'+cid);if(cel){cel.classList.add('hl');setTimeout(()=>cel.classList.remove('hl'),2000);cel.scrollIntoView({behavior:'smooth'});}},600);},300);}}}
 
 // ── helpers ───────────────────────────────────────────
+function skeletonPosts(n=5){let h='';for(let i=0;i<n;i++)h+=`<div class="skel-post"><div class="skeleton skel-av"></div><div class="skel-body"><div class="skeleton skel-line medium"></div><div class="skeleton skel-line"></div><div class="skeleton skel-line short"></div></div></div>`;return h;}
 const AVC=['#FF6699','#FF9944','#44BBFF','#55CC88','#AA88FF','#FF6644'];
 function avc(s){return AVC[(s||'?').charCodeAt(0)%AVC.length];}
 function applyAv(el,name,url,size){if(!el)return;if(url){el.style.cssText=`width:${size}px;height:${size}px;background-image:url('${url}');background-size:cover;background-position:center;font-size:0;`;el.innerText='';}else{el.style.cssText=`width:${size}px;height:${size}px;background:${avc(name)};font-size:${Math.round(size*.38)}px;`;el.innerText=(name||'?')[0];}}
@@ -624,6 +633,7 @@ function fmtBd(bd){if(!bd)return'未设置';const[y,m,d]=bd.split('-').map(Numbe
 function fmtTime(ts){if(!ts)return'';const d=Date.now()-new Date(ts);if(d<60000)return'刚刚';if(d<3600000)return Math.floor(d/60000)+'分钟前';if(d<86400000)return Math.floor(d/3600000)+'小时前';const dt=new Date(ts);return`${dt.getMonth()+1}/${dt.getDate()}`;}
 function compress(file,px=1920,q=.80){return new Promise(res=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);const s=Math.min(1,px/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);const webp=cv.toDataURL('image/webp',q);if(webp.startsWith('data:image/webp'))res(webp);else res(cv.toDataURL('image/jpeg',q));};img.src=url;});}
 function shortLoc(region){if(!region)return'';const parts=region.split('·');return(parts[parts.length-1]||'').trim();}
+
 
 function compressVideo(file){return new Promise((res,rej)=>{if(file.size>50*1024*1024){rej('视频文件不能超过50MB');return;}const url=URL.createObjectURL(file);const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{URL.revokeObjectURL(url);if(v.duration>300){rej('视频不能超过5分钟');return;}const reader=new FileReader();reader.onload=()=>res(reader.result);reader.onerror=()=>rej('视频读取失败');reader.readAsDataURL(file);};v.onerror=()=>{URL.revokeObjectURL(url);rej('无法读取视频');};v.src=url;});}
 async function processFile(file){if(file.type.startsWith('video/'))return compressVideo(file);return compress(file);}
@@ -778,7 +788,7 @@ async function loadFeed(type,append=false){
   const cid=type==='me'?'list-mine':type==='follow'?'list-follow':'list-all';
   const cont=document.getElementById(cid);
   const PAGE_SIZE=20;
-  if(!append){feedPage[type]=0;feedAllLoaded[type]=false;cont.innerHTML='';const old=document.getElementById('loadmore-'+type);if(old)old.remove();}
+  if(!append){feedPage[type]=0;feedAllLoaded[type]=false;cont.innerHTML=skeletonPosts();const old=document.getElementById('loadmore-'+type);if(old)old.remove();}
   if(feedAllLoaded[type])return;
   if(type==='follow'&&!followed.length){cont.innerHTML='<div class="empty">关注一些人，这里会显示他们的帖子</div>';return;}
   let q=db.from('posts').select('*').order('created_at',{ascending:false}).range(feedPage[type]*PAGE_SIZE,(feedPage[type]+1)*PAGE_SIZE-1);
