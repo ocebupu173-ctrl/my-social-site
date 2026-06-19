@@ -1013,10 +1013,13 @@ function switchAdminTab(tab){
 async function loadAdminContent(){
   const cont=document.getElementById('admin-content');
   cont.innerHTML='<div class="empty">加载中…</div>';
-  const[{data:posts},{data:comments}]=await Promise.all([
-    db.from('posts').select('*').order('created_at',{ascending:false}).limit(100),
-    db.from('comments').select('*').order('created_at',{ascending:true})
-  ]);
+  let posts=[],comments=[];
+  // Fetch posts with fallback
+  let res=await db.from('posts').select('*').order('created_at',{ascending:false}).limit(100);
+  if(res.data)posts=res.data;else{res=await db.from('posts').select('*').limit(100);if(res.data)posts=res.data;}
+  // Fetch comments with fallback
+  let res2=await db.from('comments').select('*').order('created_at',{ascending:true});
+  if(res2.data)comments=res2.data;else{res2=await db.from('comments').select('*');if(res2.data)comments=res2.data;}
   await fetchProfiles((posts||[]).map(p=>p.author_id).concat((comments||[]).map(c=>c.author_id)));
   const cmtMap={};(comments||[]).forEach(c=>{if(!cmtMap[c.post_id])cmtMap[c.post_id]=[];cmtMap[c.post_id].push(c);});
   if(!posts||!posts.length){cont.innerHTML='<div class="empty">暂无帖子</div>';return;}
@@ -1036,10 +1039,24 @@ async function adminDelComment(id){if(!confirm('管理员删除此评论？'))re
 async function loadAdminUsers(){
   const cont=document.getElementById('admin-users');
   cont.innerHTML='<div class="empty">加载中…</div>';
-  let res=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy,created_at').order('created_at',{ascending:false});
-  if(!res.data)res=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy,created_at');
-  const users=res.data;
-  if(!users||!users.length){cont.innerHTML='<div class="empty">暂无用户</div>';return;}
+  // Try multiple query approaches since RLS or column issues may block some queries
+  let users=null,errMsg='';
+  // Approach 1: query with all fields
+  let res=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy,created_at');
+  if(res.error){errMsg+=res.error.message+'; ';}
+  if(res.data&&res.data.length){users=res.data;}
+  // Approach 2: simpler query without created_at
+  if(!users){res=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy');if(res.error)errMsg+=res.error.message+'; ';if(res.data&&res.data.length)users=res.data;}
+  // Approach 3: minimal query
+  if(!users){res=await db.from('profiles').select('id,username,name');if(res.error)errMsg+=res.error.message+'; ';if(res.data&&res.data.length)users=res.data;}
+  // Approach 4: try with no select at all (RLS may allow this)
+  if(!users){res=await db.from('profiles').select('*');if(res.error)errMsg+=res.error.message+'; ';if(res.data&&res.data.length)users=res.data;}
+  if(!users||!users.length){
+    cont.innerHTML=`<div class="empty">暂无用户${errMsg?'<br><small style="color:#f44;">错误: '+esc(errMsg)+'</small>':''}<br><small style="color:#888;">提示：请检查 Supabase RLS 策略是否允许查询 profiles 表</small></div>`;
+    return;
+  }
+  // Sort by name
+  users.sort((a,b)=>(a.name||a.username||'').localeCompare(b.name||b.username||'','zh'));
   cont.innerHTML='<div style="padding:12px 16px;font-weight:bold;font-size:16px;border-bottom:1px solid var(--border);">全部用户（'+users.length+'）</div>'+
     users.map(u=>{
       const avS=u.avatar_url?`background-image:url('${u.avatar_url}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(u.name||u.username)};font-size:14px;`;
@@ -1153,31 +1170,61 @@ async function sendSuggestion(){
 async function loadAdminDashboard(){
   const cont=document.getElementById('admin-dashboard');
   cont.innerHTML='<div class="empty">加载中…</div>';
-  const now=new Date(),todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString();
-  const weekStart=new Date(now.getTime()-6*86400000);weekStart.setHours(0,0,0,0);const weekISO=weekStart.toISOString();
-  let allUsersRes=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy,created_at').order('created_at',{ascending:false});
-  if(!allUsersRes.data)allUsersRes=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy,created_at');
-  const allUsers=allUsersRes.data;
-  let todayUsers=[],weekUsers=[];
-  try{const r1=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy,created_at').gte('created_at',todayStart);todayUsers=r1.data||[];const r2=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,cover_url,cover_pos,cover_zoom,privacy,created_at').gte('created_at',weekISO);weekUsers=r2.data||[];}catch{}
-  const[{data:allPosts},{data:todayPosts},{data:weekPosts},{data:postsByCmt},{data:postsByLike},{data:userFollowers}]=await Promise.all([
-    db.from('posts').select('*').order('created_at',{ascending:false}),
-    db.from('posts').select('*').gte('created_at',todayStart).order('created_at',{ascending:false}),
-    db.from('posts').select('*').gte('created_at',weekISO).order('created_at',{ascending:false}),
-    db.from('comments').select('post_id'),
-    db.from('posts').select('*').order('likes',{ascending:false}).limit(20),
-    db.from('follows').select('following_id')
-  ]);
+  const now=new Date();
+  const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString();
+  const weekStart=new Date(now.getTime()-6*86400000);weekStart.setHours(0,0,0,0);
+  const weekISO=weekStart.toISOString();
+
+  // Query all data in parallel — with fallbacks
+  let allUsers=[],allPosts=[],allComments=[],allFollows=[];
+  let hasCreatedAt=false;
+
+  // Fetch profiles — try multiple approaches
+  const profilesRes=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,privacy,created_at');
+  if(profilesRes.data&&profilesRes.data.length){allUsers=profilesRes.data;if(allUsers[0].hasOwnProperty('created_at'))hasCreatedAt=true;}
+  else{const r2=await db.from('profiles').select('id,username,name,class_year,bio,region,constellation,birthday,avatar_url,privacy');if(r2.data)allUsers=r2.data;else{const r3=await db.from('profiles').select('*');if(r3.data)allUsers=r3.data;else{const r4=await db.from('profiles').select('id,username,name');if(r4.data)allUsers=r4.data;}}}
+
+  // Fetch posts
+  const postsRes=await db.from('posts').select('*').order('created_at',{ascending:false});
+  if(postsRes.data)allPosts=postsRes.data;
+  else{const r2=await db.from('posts').select('*');if(r2.data)allPosts=r2.data;}
+
+  // Fetch comments
+  const commentsRes=await db.from('comments').select('post_id,author_id,content,created_at');
+  if(commentsRes.data)allComments=commentsRes.data;
+  else{const r2=await db.from('comments').select('post_id');if(r2.data)allComments=r2.data;}
+
+  // Fetch follows
+  const followsRes=await db.from('follows').select('following_id');
+  if(followsRes.data)allFollows=followsRes.data;
+
+  // Compute time-based stats in JS (avoids DB gte query issues)
+  let todayUsers=[],weekUsers=[],todayPosts=[],weekPosts=[];
+  if(hasCreatedAt){
+    todayUsers=allUsers.filter(u=>u.created_at&&u.created_at>=todayStart);
+    weekUsers=allUsers.filter(u=>u.created_at&&u.created_at>=weekISO);
+    todayPosts=allPosts.filter(p=>p.created_at&&p.created_at>=todayStart);
+    weekPosts=allPosts.filter(p=>p.created_at&&p.created_at>=weekISO);
+  }
+
+  // Fetch profiles for post authors
   await fetchProfiles((allUsers||[]).map(u=>u.id).concat((allPosts||[]).map(p=>p.author_id)));
+
   const fmtReg=d=>d.created_at?new Date(d.created_at).toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
   function userRow(u){const p=getProfile(u.id);const n=p?p.name:u.name||u.username;const av=p?p.avatar_url:'';const avS=av?`background-image:url('${av}');background-size:cover;background-position:center;font-size:0;`:`background:${avc(n)};font-size:12px;`;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div class="av" style="width:28px;height:28px;flex-shrink:0;cursor:pointer;${avS}" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(n)}')">${av?'':esc((n||'?')[0])}</div><div style="flex:1;font-size:13px;"><strong>${esc(n)}</strong> <span style="color:#bbb;font-size:11px;">真实姓名:${esc(u.username)} ${u.class_year?'· '+esc(u.class_year):''}</span></div><span style="font-size:11px;color:#bbb;">${fmtReg(u)}</span></div>`;}
   function postRow(p,extra){const prof=getProfile(p.author_id);const n=prof?prof.name:p.author_name;return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);"><div style="flex:1;min-width:0;font-size:13px;"><strong>${esc(n)}</strong>: <span style="color:var(--text2);">${esc((p.content||'[图片]').slice(0,40))}</span></div><span style="font-size:12px;color:var(--pk);font-weight:bold;flex-shrink:0;">${extra}</span></div>`;}
-  // 评论数统计
-  const cmtCount={};(postsByCmt||[]).forEach(c=>cmtCount[c.post_id]=(cmtCount[c.post_id]||0)+1);
+
+  // Comment counts
+  const cmtCount={};(allComments||[]).forEach(c=>{cmtCount[c.post_id]=(cmtCount[c.post_id]||0)+1;});
   const postsSortedByCmt=[...(allPosts||[])].sort((a,b)=>(cmtCount[b.id]||0)-(cmtCount[a.id]||0)).slice(0,15);
-  // 粉丝数统计
-  const followerCount={};(userFollowers||[]).forEach(f=>followerCount[f.following_id]=(followerCount[f.following_id]||0)+1);
+
+  // Follower counts
+  const followerCount={};(allFollows||[]).forEach(f=>{followerCount[f.following_id]=(followerCount[f.following_id]||0)+1;});
   const usersSortedByFans=[...(allUsers||[])].sort((a,b)=>(followerCount[b.id]||0)-(followerCount[a.id]||0)).slice(0,15);
+
+  // Posts sorted by likes
+  const postsByLike=[...(allPosts||[])].sort((a,b)=>(b.likes||0)-(a.likes||0)).slice(0,20);
+
   cont.innerHTML=`
   <div style="padding:16px;border-bottom:1px solid var(--border);">
     <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">👤 注册用户</div>
@@ -1186,9 +1233,10 @@ async function loadAdminDashboard(){
       <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(todayUsers||[]).length}</div><div class="admin-stat-label">今日注册</div></div></div>
       <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(weekUsers||[]).length}</div><div class="admin-stat-label">本周注册</div></div></div>
     </div>
-    <details><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看今日注册 (${(todayUsers||[]).length})</summary>${(todayUsers||[]).map(u=>userRow(u)).join('')||'<div class="empty">今日无新用户</div>'}</details>
-    <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看本周注册 (${(weekUsers||[]).length})</summary>${(weekUsers||[]).map(u=>userRow(u)).join('')||'<div class="empty">本周无新用户</div>'}</details>
-    <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看全部用户 (${(allUsers||[]).length})</summary>${(allUsers||[]).map(u=>userRow(u)).join('')}</details>
+    ${!hasCreatedAt?'<div style="font-size:11px;color:#f90;margin-bottom:8px;">⚠ 数据表缺少 created_at 字段，今日/本周统计可能不准确</div>':''}
+    ${todayUsers.length?`<details><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看今日注册 (${todayUsers.length})</summary>${todayUsers.map(u=>userRow(u)).join('')}</details>`:''}
+    ${weekUsers.length?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看本周注册 (${weekUsers.length})</summary>${weekUsers.map(u=>userRow(u)).join('')}</details>`:''}
+    <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看全部用户 (${(allUsers||[]).length})</summary>${(allUsers||[]).map(u=>userRow(u)).join('')||'<div class="empty">暂无数据</div>'}</details>
   </div>
   <div style="padding:16px;border-bottom:1px solid var(--border);">
     <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">📝 帖子数量</div>
@@ -1197,8 +1245,8 @@ async function loadAdminDashboard(){
       <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(todayPosts||[]).length}</div><div class="admin-stat-label">今日发布</div></div></div>
       <div class="admin-card"><div class="admin-stat"><div class="admin-stat-num">${(weekPosts||[]).length}</div><div class="admin-stat-label">本周发布</div></div></div>
     </div>
-    <details><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看今日帖子 (${(todayPosts||[]).length})</summary>${(todayPosts||[]).map(p=>postRow(p,fmtReg(p))).join('')||'<div class="empty">今日无帖子</div>'}</details>
-    <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看本周帖子 (${(weekPosts||[]).length})</summary>${(weekPosts||[]).map(p=>postRow(p,fmtReg(p))).join('')||'<div class="empty">本周无帖子</div>'}</details>
+    ${todayPosts.length?`<details><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看今日帖子 (${todayPosts.length})</summary>${todayPosts.map(p=>postRow(p,fmtReg(p))).join('')}</details>`:''}
+    ${weekPosts.length?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;color:var(--pk);">查看本周帖子 (${weekPosts.length})</summary>${weekPosts.map(p=>postRow(p,fmtReg(p))).join('')}</details>`:''}
   </div>
   <div style="padding:16px;border-bottom:1px solid var(--border);">
     <div style="font-weight:bold;font-size:16px;margin-bottom:12px;">💬 评论排行（高→低）</div>
