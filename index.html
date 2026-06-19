@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://jdsj-data-25xyq.quattro.wang;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://podskdvqrhxvhnwylvsx.supabase.co wss://podskdvqrhxvhnwylvsx.supabase.co;">
 <title>极简社交</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--pk:#FF6699;--pkb:#fff0f5;--bg:#fff;--card:#fff;--text:#0f1419;--text2:#536471;--border:#eee;--border2:#f2f2f2;--hover:#f9f9f9;--input-bg:#fff;--nav-bg:rgba(255,255,255,.93);--compose-bg:#fff;--bubble-other:#f2f2f2;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -583,8 +582,9 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
 
 </div><!-- #main-app -->
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SBU='https://jdsj-data-25xyq.quattro.wang';
+const SBU='https://podskdvqrhxvhnwylvsx.supabase.co';
 const SBK='sb_publishable_9Kow0JDI_jpqiWm4ne5Zjg_HlDA3wr8';
 const db=supabase.createClient(SBU,SBK);
 
