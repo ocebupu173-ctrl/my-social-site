@@ -226,7 +226,6 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
     <input id="l-p" class="ai" type="password" placeholder="密码">
     <div id="l-e" class="aerr"></div>
     <button class="abtn" onclick="doLogin()">登录</button>
-    <div class="ahint" style="margin-top:8px;"><a href="#" onclick="showResetPwd();return false;" style="color:var(--pk);text-decoration:none;">忘记密码？</a></div>
   </div>
   <div id="form-r" style="display:none">
     <input id="r-u" class="ai" placeholder="真实姓名（仅管理员可见）">
@@ -237,15 +236,6 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
     <div id="r-e" class="aerr"></div>
     <button class="abtn" onclick="doRegister()">注册账号</button>
     <div class="ahint">真实姓名和届数仅管理员可见，不会展示给其他用户</div>
-  </div>
-  <div id="form-reset" style="display:none">
-    <div style="font-size:14px;color:var(--text2);text-align:center;margin-bottom:14px;">重置密码</div>
-    <input id="reset-u" class="ai" placeholder="请输入你的真实姓名">
-    <input id="reset-p" class="ai" type="password" placeholder="新密码（至少6位）">
-    <input id="reset-p2" class="ai" type="password" placeholder="确认新密码">
-    <div id="reset-e" class="aerr"></div>
-    <button class="abtn" onclick="doResetPwd()">重置密码</button>
-    <div class="ahint"><a href="#" onclick="hideResetPwd();return false;" style="color:var(--pk);text-decoration:none;">← 返回登录</a></div>
   </div>
 </div>
 </div>
@@ -400,6 +390,17 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
     <span class="set-row-label">生日</span>
     <span class="set-row-val" id="set-bd">未设置 ›</span>
   </div>
+  <div class="set-row" onclick="openClassYearMenu()">
+    <span class="set-row-label">届数</span>
+    <span class="set-row-val" id="set-cy">未设置 ›</span>
+  </div>
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+    <div style="font-weight:bold;font-size:14px;margin-bottom:12px;color:var(--text2);">修改密码</div>
+    <input id="i-old-pwd" class="ef" type="password" placeholder="当前密码">
+    <input id="i-new-pwd" class="ef" type="password" placeholder="新密码（至少6位）">
+    <input id="i-new-pwd2" class="ef" type="password" placeholder="确认新密码">
+    <button class="btn-pk" style="width:100%;" onclick="changePassword()">修改密码</button>
+  </div>
   <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
     <div style="font-weight:bold;font-size:14px;margin-bottom:12px;color:var(--text2);">隐私设置（勾选后其他用户将看不到）</div>
     <label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px;cursor:pointer;"><input type="checkbox" id="priv-region" onchange="savePrivacy()" style="accent-color:var(--pk);width:18px;height:18px;">隐藏所在地区</label>
@@ -433,7 +434,7 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
   <div class="hd" style="position:sticky;top:0;">
     <span onclick="closeAdmin()" style="cursor:pointer;font-size:14px;color:var(--pk);">← 返回</span>
     <span style="font-size:17px;">🛡️ 管理后台</span>
-    <span></span>
+    <span onclick="refreshAdmin()" style="cursor:pointer;font-size:13px;color:var(--pk);">刷新</span>
   </div>
   <div class="admin-tabs">
     <div class="admin-tab on" id="atab-content" onclick="switchAdminTab('content')">内容管理</div>
@@ -539,6 +540,22 @@ body.dark .mc textarea{background:transparent;color:var(--text);}
       <span id="bd-title">选择出生年份</span><span style="min-width:40px"></span>
     </div>
     <div class="mscroll" id="bd-list"></div>
+  </div>
+</div>
+
+<!-- 届数选择 -->
+<div class="overlay" id="menu-cy" onclick="closeClassYear()">
+  <div class="mbox" onclick="event.stopPropagation()">
+    <div class="mhd"><span></span>选择届数<span></span></div>
+    <div class="mscroll">
+      <div class="mi" onclick="pickClassYear('2020届')">2020届</div><div class="mi" onclick="pickClassYear('2021届')">2021届</div>
+      <div class="mi" onclick="pickClassYear('2022届')">2022届</div><div class="mi" onclick="pickClassYear('2023届')">2023届</div>
+      <div class="mi" onclick="pickClassYear('2024届')">2024届</div><div class="mi" onclick="pickClassYear('2025届')">2025届</div>
+      <div class="mi" onclick="pickClassYear('2026届')">2026届</div><div class="mi" onclick="pickClassYear('2027届')">2027届</div>
+      <div class="mi" onclick="pickClassYear('2028届')">2028届</div><div class="mi" onclick="pickClassYear('2029届')">2029届</div>
+      <div class="mi" onclick="pickClassYear('2030届')">2030届</div>
+      <div class="mi cancel" onclick="closeClassYear()">取消</div>
+    </div>
   </div>
 </div>
 
@@ -686,6 +703,7 @@ async function loadMyStats(){
 }
 function openSettings(){
   document.getElementById('i-name').value=my.name||'';document.getElementById('i-bio').value=my.bio||'';
+  document.getElementById('i-old-pwd').value='';document.getElementById('i-new-pwd').value='';document.getElementById('i-new-pwd2').value='';
   updateSettingsVals();loadPrivacyUI();
   const ae=document.getElementById('admin-entry');if(ae)ae.style.display=my.id===ADMIN_ID?'block':'none';
   const se=document.getElementById('suggest-entry');if(se)se.style.display=my.id!==ADMIN_ID?'block':'none';
@@ -699,6 +717,7 @@ function updateSettingsVals(){
   const sc=document.getElementById('set-city');if(sc)sc.innerText=(my.region||'未设置')+' ›';
   const ss=document.getElementById('set-const');if(ss)ss.innerText=(my.constellation||'未设置')+' ›';
   const sb=document.getElementById('set-bd');if(sb)sb.innerText=fmtBd(my.birthday)+' ›';
+  const scy=document.getElementById('set-cy');if(scy)scy.innerText=(my.class_year||'未设置')+' ›';
 }
 async function saveProfile(){let name=document.getElementById('i-name').value.trim()||my.name;const bio=document.getElementById('i-bio').value.trim();if(name.length<1||name.length>20){alert('昵称长度1-20个字符');return;}if(/[<>"';&]/.test(name)){alert('昵称不能包含特殊符号');return;}const{error}=await db.from('profiles').update({name,bio}).eq('id',my.id);if(error){alert('保存失败：'+error.message);return;}my.name=name;my.bio=bio;session.name=name;session.bio=bio;localStorage.setItem('session',JSON.stringify(session));renderMe();applyAv(document.getElementById('cav'),my.name,my.avatar_url,46);alert('已保存');}
 
@@ -816,6 +835,33 @@ function renderBd(){const t={year:'选择出生年份',month:`${bdY}年 · 选�
 function bdYear(y){bdY=y;bdStep='month';renderBd();}
 function bdMonth(m){bdM=m;bdStep='day';renderBd();}
 async function bdDay(d){const v=`${bdY}-${String(bdM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const{error}=await db.from('profiles').update({birthday:v}).eq('id',my.id);if(!error){my.birthday=v;session.birthday=v;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeBd();}
+
+// ── class year ──────────────────────────────────────────
+function openClassYearMenu(){document.getElementById('menu-cy').style.display='flex';}
+function closeClassYear(){document.getElementById('menu-cy').style.display='none';}
+async function pickClassYear(cy){const{error}=await db.from('profiles').update({class_year:cy}).eq('id',my.id);if(!error){my.class_year=cy;session.class_year=cy;localStorage.setItem('session',JSON.stringify(session));renderMe();}closeClassYear();}
+
+// ── change password ─────────────────────────────────────
+async function changePassword(){
+  const oldP=document.getElementById('i-old-pwd').value;
+  const newP=document.getElementById('i-new-pwd').value.trim();
+  const newP2=document.getElementById('i-new-pwd2').value.trim();
+  if(!oldP||!newP||!newP2){alert('请填写所有密码字段');return;}
+  if(newP.length<6){alert('新密码至少6位');return;}
+  if(newP!==newP2){alert('两次新密码不一致');return;}
+  if(newP===oldP){alert('新密码不能与旧密码相同');return;}
+  const{data:prof}=await db.from('profiles').select('password_hash,password_salt').eq('id',my.id).maybeSingle();
+  if(!prof){alert('用户信息获取失败');return;}
+  const salt=prof.password_salt||'';
+  const oldH=await sha256(salt+oldP);
+  if(oldH!==prof.password_hash){const h2=await sha256(oldP);if(!salt&&h2===prof.password_hash){}else{alert('当前密码错误');return;}}
+  const newSalt=crypto.getRandomValues(new Uint8Array(16)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
+  const newH=await sha256(newSalt+newP);
+  const{error}=await db.from('profiles').update({password_hash:newH,password_salt:newSalt}).eq('id',my.id);
+  if(error){alert('修改失败：'+error.message);return;}
+  document.getElementById('i-old-pwd').value='';document.getElementById('i-new-pwd').value='';document.getElementById('i-new-pwd2').value='';
+  alert('密码修改成功！请牢记新密码。');
+}
 
 // ── nav ───────────────────────────────────────────────
 function switchNav(v){document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));const vm={home:'v-home',follow:'v-follow',msg:'v-msg',me:'v-me'};const tm={home:'首页',follow:'动态',msg:'消息',me:'个人主页'};document.getElementById(vm[v]).classList.add('on');document.getElementById('nav-'+v).classList.add('on');document.getElementById('title').innerText=tm[v];if(v==='follow')loadFeed('follow');if(v==='me'){loadFeed('me');loadMyStats();}if(v==='msg')loadMsgPage();}
@@ -951,6 +997,7 @@ async function submitReply(){
 let adminAuthAttempts=0,adminAuthUntil=0;
 async function openAdmin(){if(my.id!==ADMIN_ID)return;const st=sessionStorage.getItem('admin_auth');if(st){try{const a=JSON.parse(st);if(Date.now()-a.ts<3600000){document.getElementById('v-admin').style.display='block';switchAdminTab('content');return;}}catch{}sessionStorage.removeItem('admin_auth');}if(Date.now()<adminAuthUntil){const sec=Math.ceil((adminAuthUntil-Date.now())/1000);alert(`验证过于频繁，请${sec}秒后重试`);return;}const pw=prompt('请输入管理员密码验证身份：');if(!pw)return;const{data:prof}=await db.from('profiles').select('password_hash,password_salt').eq('id',ADMIN_ID).maybeSingle();if(!prof)return;const salt=prof.password_salt||'';const h=await sha256(salt+pw);if(h!==prof.password_hash){const h2=await sha256(pw);if(h2!==prof.password_hash){adminAuthAttempts++;if(adminAuthAttempts>=5){adminAuthUntil=Date.now()+300000;adminAuthAttempts=0;}alert('密码错误'+(adminAuthAttempts>=3?'（多次失败将被限制）':''));return;}}adminAuthAttempts=0;sessionStorage.setItem('admin_auth',JSON.stringify({ts:Date.now()}));document.getElementById('v-admin').style.display='block';switchAdminTab('content');}
 function closeAdmin(){document.getElementById('v-admin').style.display='none';}
+function refreshAdmin(){const tabs=['content','users','reports','dashboard'];const cur=document.querySelector('.admin-tab.on');if(cur){const t=cur.id.replace('atab-','');if(t==='content')loadAdminContent();else if(t==='users')loadAdminUsers();else if(t==='reports')loadAdminReports();else if(t==='dashboard')loadAdminDashboard();}}
 function switchAdminTab(tab){
   ['content','users','reports','dashboard'].forEach(t=>{
     document.getElementById('admin-'+t).style.display=t===tab?'block':'none';
@@ -1000,11 +1047,28 @@ async function loadAdminUsers(){
       const regTime=u.created_at?new Date(u.created_at).toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'未知';
       return`<div class="admin-user-row">
         <div class="av" style="width:40px;height:40px;flex-shrink:0;cursor:pointer;${avS}" onclick="closeAdmin();openUser('${esc(u.id)}','${esc(u.name||u.username)}')">${esc(avC)}</div>
-        <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(u.name||u.username)} ${u.id===ADMIN_ID?'<span style="background:var(--pk);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:4px;">管理员</span>':''}</div><div style="font-size:12px;color:var(--text2);">真实姓名: ${esc(u.username)} ${u.class_year?'· '+esc(u.class_year):''} · ${esc(u.region||'未设置地区')}</div><div style="font-size:11px;color:#bbb;">注册于 ${regTime}</div></div>
+        <div style="flex:1;min-width:0;"><div style="font-weight:bold;font-size:14px;">${esc(u.name||u.username)} ${u.id===ADMIN_ID?'<span style="background:var(--pk);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:4px;">管理员</span>':''}</div><div style="font-size:12px;color:var(--text2);">真实姓名: ${esc(u.username)} ${u.class_year?'· '+esc(u.class_year):''} · ${esc(u.region||'未设置地区')}</div><div style="font-size:11px;color:#bbb;">注册于 ${regTime} · 简介: ${esc((u.bio||'').slice(0,20))}</div></div>
         <div class="admin-actions">
-          ${u.id!==ADMIN_ID?`<button class="admin-btn" onclick="adminResetProfile('${esc(u.id)}')">重置</button><button class="admin-btn danger" onclick="adminBanUser('${esc(u.id)}','${esc(u.name||u.username)}')">封禁</button>`:''}
+          ${u.id!==ADMIN_ID?`<button class="admin-btn" onclick="adminEditUser('${esc(u.id)}','${esc(u.name||u.username)}','${esc(u.class_year||'')}','${esc((u.bio||'').replace(/'/g,"\\'"))}')">编辑</button><button class="admin-btn" onclick="adminResetProfile('${esc(u.id)}')">重置</button><button class="admin-btn danger" onclick="adminBanUser('${esc(u.id)}','${esc(u.name||u.username)}')">封禁</button>`:''}
         </div>
       </div>`;}).join('');
+}
+async function adminEditUser(uid,curName,curCy,curBio){
+  const name=prompt('编辑昵称：',curName||uid);
+  if(name===null)return;
+  const cy=prompt('编辑届数（如：2024届）：',curCy||'');
+  if(cy===null)return;
+  const bio=prompt('编辑简介：',curBio||'');
+  if(bio===null)return;
+  if(name&&(/[<>"';&]/.test(name)||name.length>20)){alert('昵称包含无效字符或过长');return;}
+  const upd={name:name||uid};
+  if(cy!==null)upd.class_year=cy;
+  if(bio!==null)upd.bio=bio;
+  const{error}=await db.from('profiles').update(upd).eq('id',uid);
+  if(error){alert('编辑失败：'+error.message);return;}
+  delete profileCache[uid];
+  if(uid===my.id){my.name=name||uid;my.class_year=cy||'';my.bio=bio||'';Object.assign(session,{name:my.name,class_year:my.class_year,bio:my.bio});localStorage.setItem('session',JSON.stringify(session));renderMe();}
+  alert('用户资料已更新');loadAdminUsers();
 }
 async function adminResetProfile(uid){if(!confirm('重置该用户所有信息？头像、昵称、简介、地区、星座、生日将全部归零。'))return;await db.from('profiles').update({avatar_url:'',bio:'',name:uid,region:'',constellation:'',birthday:'',cover_url:'',cover_pos:'50% 50%',cover_zoom:100,privacy:''}).eq('id',uid);delete profileCache[uid];alert('已重置全部资料');loadAdminUsers();}
 async function adminBanUser(uid,name){if(uid===ADMIN_ID){alert('无法封禁管理员');return;}if(!confirm(`封禁用户 ${name}？\n该账号将被永久删除，包括所有帖子、评论和私信。此操作不可逆。`))return;await Promise.all([db.from('comments').delete().eq('author_id',uid),db.from('posts').delete().eq('author_id',uid),db.from('messages').delete().or(`sender_id.eq.${uid},recipient_id.eq.${uid}`),db.from('notifications').delete().or(`sender_id.eq.${uid},recipient_id.eq.${uid}`)]);await db.from('profiles').delete().eq('id',uid);alert('已封禁并永久删除');loadAdminUsers();}
@@ -1048,8 +1112,9 @@ async function loadAdminReports(){
   initVoteOptions();
 }
 let adminMedia={broadcast:[],qa:[]};
-async function handleAdminMedia(e,type){const arr=adminMedia[type];const r=9-arr.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{arr.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';document.getElementById('pgrid-'+type).innerHTML=arr.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="adminMedia['${type}'].splice(${i},1);handleAdminMedia({target:{files:[],value:''},preventDefault:()=>{}},'')||document.getElementById('pgrid-${type}').innerHTML=adminMedia['${type}'].map((s,i)=>'').join('')">×</div></div>`).join('');renderAdminPgrid(type);}
-function renderAdminPgrid(type){const arr=adminMedia[type];document.getElementById('pgrid-'+type).innerHTML=arr.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="adminMedia.${type}.splice(${i},1);renderAdminPgrid('${type}')">×</div></div>`).join('');}
+async function handleAdminMedia(e,type){const arr=adminMedia[type];const r=9-arr.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{arr.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderAdminPgrid(type);}
+function rmAdminMedia(type,i){adminMedia[type].splice(i,1);renderAdminPgrid(type);}
+function renderAdminPgrid(type){const arr=adminMedia[type];document.getElementById('pgrid-'+type).innerHTML=arr.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="rmAdminMedia('${type}',${i})">×</div></div>`).join('');}
 async function sendBroadcast(){
   const msg=document.getElementById('admin-broadcast').value.trim();if(!msg&&!adminMedia.broadcast.length){alert('请输入公告内容');return;}
   const{data:users}=await db.from('profiles').select('id');if(!users)return;
@@ -1162,11 +1227,6 @@ function renderThemeDots(){const cur=getComputedStyle(document.documentElement).
 function pickTheme(i){const t=THEMES[i];document.documentElement.style.setProperty('--pk',t.pk);if(!document.body.classList.contains('dark'))document.documentElement.style.setProperty('--pkb',t.pkb);localStorage.setItem('theme_pk',t.pk);localStorage.setItem('theme_pkb',t.pkb);renderThemeDots();}
 function toggleDark(){const on=document.body.classList.toggle('dark');document.getElementById('dark-track').classList.toggle('on',on);localStorage.setItem('dark_mode',on?'1':'0');if(!on){const pkb=localStorage.getItem('theme_pkb')||'#fff0f5';document.documentElement.style.setProperty('--pkb',pkb);}}
 function loadTheme(){const pk=localStorage.getItem('theme_pk'),pkb=localStorage.getItem('theme_pkb'),dark=localStorage.getItem('dark_mode')==='1';if(pk)document.documentElement.style.setProperty('--pk',pk);if(dark){document.body.classList.add('dark');document.getElementById('dark-track')?.classList.add('on');}else if(pkb)document.documentElement.style.setProperty('--pkb',pkb);}
-
-// ── password reset (NOTE: insecure without email verification; admin should handle forgotten passwords) ──
-function showResetPwd(){document.getElementById('form-l').style.display='none';document.getElementById('form-r').style.display='none';document.getElementById('form-reset').style.display='block';document.getElementById('tab-l').className='atab';document.getElementById('tab-r').className='atab';}
-function hideResetPwd(){document.getElementById('form-reset').style.display='none';document.getElementById('form-l').style.display='block';document.getElementById('tab-l').className='atab on';}
-async function doResetPwd(){const u=document.getElementById('reset-u').value.trim(),newP=document.getElementById('reset-p').value.trim(),newP2=document.getElementById('reset-p2').value.trim(),e=document.getElementById('reset-e');e.style.display='none';if(!u||!newP||!newP2){e.innerText='请填写所有字段';e.style.display='block';return;}if(newP.length<6){e.innerText='密码至少6位';e.style.display='block';return;}if(newP!==newP2){e.innerText='两次密码不一致';e.style.display='block';return;}const{data:prof}=await db.from('profiles').select('id,username,password_hash,password_salt').eq('username',u).maybeSingle();if(!prof){e.innerText='该账号不存在';e.style.display='block';return;}const salt=crypto.getRandomValues(new Uint8Array(16)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');const h=await sha256(salt+newP);const{error}=await db.from('profiles').update({password_hash:h,password_salt:salt}).eq('id',prof.id);if(error){e.innerText='重置失败：'+error.message;e.style.display='block';return;}alert('密码重置成功，请登录');hideResetPwd();}
 
 // ── boot ──────────────────────────────────────────────
 window.onload=()=>{loadTheme();try{session=JSON.parse(localStorage.getItem('session')||'null');}catch{}if(session)launchApp();else document.getElementById('auth-screen').style.display='flex';};
