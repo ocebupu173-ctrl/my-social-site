@@ -681,10 +681,10 @@ function cancelCrop(){document.getElementById('crop-overlay').style.display='non
 async function confirmCrop(){
   const mode=cropMode,imgUrl=cropImgUrl,isNew=cropIsNew,posX=cropPosX,posY=cropPosY,zoom=cropZoomVal;cancelCrop();
   if(mode==='cover'){
-    const pos=`${posX.toFixed(1)}% ${posY.toFixed(1)}%`;const upd={cover_pos:pos,cover_zoom:zoom};if(isNew)upd.cover_url=imgUrl;
-    await db.from('profiles').update(upd).eq('id',my.id);if(isNew)my.cover_url=imgUrl;my.cover_pos=pos;my.cover_zoom=zoom;Object.assign(session,{cover_url:my.cover_url,cover_pos:pos,cover_zoom:zoom});localStorage.setItem('session',JSON.stringify(session));renderMe();
+    const pos=`${posX.toFixed(1)}% ${posY.toFixed(1)}%`;const upd={cover_pos:pos,cover_zoom:zoom};if(isNew){try{upd.cover_url=await uploadToStorage(imgUrl,'cov');}catch(e){alert('封面上传失败');return;}}
+    await db.from('profiles').update(upd).eq('id',my.id);if(isNew)my.cover_url=upd.cover_url;my.cover_pos=pos;my.cover_zoom=zoom;Object.assign(session,{cover_url:my.cover_url,cover_pos:pos,cover_zoom:zoom});localStorage.setItem('session',JSON.stringify(session));renderMe();
   }else{
-    const img=new Image();img.onload=async()=>{const scale=zoom/100,r=img.height/img.width,sw=img.width/scale,sh=sw;const sx=Math.max(0,Math.min(img.width-sw,img.width*(1-1/scale)*(posX/100)));const sy=Math.max(0,Math.min(img.height-sh,img.height*(1-1/(r*scale))*(posY/100)));const cv=document.createElement('canvas');cv.width=400;cv.height=400;cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,400,400);const b64=cv.toDataURL('image/jpeg',.85);await db.from('profiles').update({avatar_url:b64}).eq('id',my.id);my.avatar_url=b64;session.avatar_url=b64;localStorage.setItem('session',JSON.stringify(session));renderMe();applyAv(document.getElementById('cav'),my.name,b64,46);};img.src=imgUrl;
+    const img=new Image();img.onload=async()=>{const scale=zoom/100,r=img.height/img.width,sw=img.width/scale,sh=sw;const sx=Math.max(0,Math.min(img.width-sw,img.width*(1-1/scale)*(posX/100)));const sy=Math.max(0,Math.min(img.height-sh,img.height*(1-1/(r*scale))*(posY/100)));const cv=document.createElement('canvas');cv.width=400;cv.height=400;cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,400,400);const b64=cv.toDataURL('image/jpeg',.85);let url;try{url=await uploadToStorage(b64,'av');}catch(e){alert('头像上传失败');return;}await db.from('profiles').update({avatar_url:url}).eq('id',my.id);my.avatar_url=url;session.avatar_url=url;localStorage.setItem('session',JSON.stringify(session));renderMe();applyAv(document.getElementById('cav'),my.name,url,46);};img.src=imgUrl;
   }
 }
 function cropSetZoom(v){cropZoomVal=Number(v);getCropEl().style.backgroundSize=v+'%';}
