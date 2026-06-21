@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="dns-prefetch" href="https://podskdvqrhxvhnwylvsx.supabase.co">
 <link rel="preconnect" href="https://podskdvqrhxvhnwylvsx.supabase.co">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://podskdvqrhxvhnwylvsx.supabase.co wss://podskdvqrhxvhnwylvsx.supabase.co;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://podskdvqrhxvhnwylvsx.supabase.co; media-src 'self' data: blob: https://podskdvqrhxvhnwylvsx.supabase.co; connect-src 'self' https://podskdvqrhxvhnwylvsx.supabase.co wss://podskdvqrhxvhnwylvsx.supabase.co;">
 <title>极简社交</title>
 <style>
 :root{--pk:#FF6699;--pkb:#fff0f5;--bg:#fff;--card:#fff;--text:#0f1419;--text2:#536471;--border:#eee;--border2:#f2f2f2;--hover:#f9f9f9;--input-bg:#fff;--nav-bg:rgba(255,255,255,.93);--compose-bg:#fff;--bubble-other:#f2f2f2;}
@@ -637,6 +637,16 @@ function shortLoc(region){if(!region)return'';const parts=region.split('·');ret
 
 function compressVideo(file){return new Promise((res,rej)=>{if(file.size>50*1024*1024){rej('视频文件不能超过50MB');return;}const url=URL.createObjectURL(file);const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{URL.revokeObjectURL(url);if(v.duration>300){rej('视频不能超过5分钟');return;}const reader=new FileReader();reader.onload=()=>res(reader.result);reader.onerror=()=>rej('视频读取失败');reader.readAsDataURL(file);};v.onerror=()=>{URL.revokeObjectURL(url);rej('无法读取视频');};v.src=url;});}
 async function processFile(file){if(file.type.startsWith('video/'))return compressVideo(file);return compress(file);}
+async function uploadToStorage(b64,prefix){
+  const resp=await fetch(b64);const blob=await resp.blob();
+  const isVid=b64.startsWith('data:video/');
+  const ext=isVid?'mp4':'jpg';
+  const path=`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const{error}=await db.storage.from('images').upload(path,blob,{contentType:blob.type});
+  if(error)throw error;
+  const{data:ud}=db.storage.from('images').getPublicUrl(path);
+  return isVid?'video:'+ud.publicUrl:ud.publicUrl;
+}
 
 // ── lightbox ─────────────────────────────────────────
 function openLb(imgs,idx){lbImgs=imgs;lbIdx=idx||0;document.getElementById('lb-img').src=lbImgs[lbIdx];document.getElementById('lb-counter').innerText=lbImgs.length>1?`${lbIdx+1} / ${lbImgs.length}`:'';document.getElementById('lb-prev').style.display=lbImgs.length>1?'block':'none';document.getElementById('lb-next').style.display=lbImgs.length>1?'block':'none';document.getElementById('lightbox').style.display='flex';document.body.style.overflow='hidden';}
@@ -651,7 +661,7 @@ function renderImgs(raw){
   const n=Math.min(a.length,9);
   const cls=`imgs imgs-${n}`;
   const escaped=JSON.stringify(a).replace(/'/g,"\\'");
-  return`<div class="${cls}">${a.slice(0,9).map((s,i)=>s.startsWith('data:video/')?`<video src="${esc(s)}" controls playsinline style="width:100%;height:100%;object-fit:cover;border-radius:14px;max-height:360px;"></video>`:`<img src="${esc(s)}" onclick="event.stopPropagation();openLb(${escaped.replace(/"/g,'&quot;')},${i})">`).join('')}</div>`;
+  return`<div class="${cls}">${a.slice(0,9).map((s,i)=>{const isV=s.startsWith('video:')||s.startsWith('data:video/');const src=isV&&s.startsWith('video:')?s.slice(6):s;return isV?`<video src="${esc(src)}" controls playsinline style="width:100%;height:100%;object-fit:cover;border-radius:14px;max-height:360px;"></video>`:`<img src="${esc(src)}" onclick="event.stopPropagation();openLb(${escaped.replace(/"/g,'&quot;')},${i})" loading="lazy">`;}).join('')}</div>`;
 }
 
 // ── crop modal ────────────────────────────────────────
@@ -827,7 +837,7 @@ async function sharePost(id){
 async function handleFiles(e){const r=9-postImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{postImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderPgrid();}
 function renderPgrid(){document.getElementById('pgrid').innerHTML=postImgs.map((s,i)=>`<div class="pwrap">${s.startsWith('data:video/')?`<video class="pthumb" src="${s}" muted></video>`:`<img class="pthumb" src="${s}">`}<div class="pdel" onclick="rmImg(${i})">×</div></div>`).join('');}
 function rmImg(i){postImgs.splice(i,1);renderPgrid();}
-async function publish(){const txt=document.getElementById('inp').value.trim();if(!txt&&!postImgs.length)return;const iv=postImgs.length?JSON.stringify(postImgs):null;const{error}=await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:txt,image_url:iv,likes:0}]);if(error){alert('发帖失败：'+error.message);return;}document.getElementById('inp').value='';postImgs=[];renderPgrid();feedPage={};feedAllLoaded={};await loadFeed('all');}
+async function publish(){const txt=document.getElementById('inp').value.trim();if(!txt&&!postImgs.length)return;let iv=null;if(postImgs.length){const urls=[];for(let i=0;i<postImgs.length;i++){try{urls.push(await uploadToStorage(postImgs[i],'post'));}catch(err){alert('图片上传失败');return;}}iv=JSON.stringify(urls);}const{error}=await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:txt,image_url:iv,likes:0}]);if(error){alert('发帖失败：'+error.message);return;}document.getElementById('inp').value='';postImgs=[];renderPgrid();feedPage={};feedAllLoaded={};await loadFeed('all');}
 
 // ── star / city / birthday ────────────────────────────
 function openConstMenu(){document.getElementById('menu-const').style.display='flex';}
@@ -926,7 +936,7 @@ async function loadChatMsgs(){const{data}=await db.from('messages').select('*').
 async function handleChatImgs(e){const r=9-chatImgs.length;if(r<=0){alert('最多9个');return;}for(const f of Array.from(e.target.files).slice(0,r)){try{chatImgs.push(await processFile(f));}catch(err){alert(err);}}e.target.value='';renderChatPgrid();}
 function renderChatPgrid(){const cont=document.getElementById('chat-pgrid');cont.innerHTML=chatImgs.map((s,i)=>`<div class="pwrap"><img class="pthumb" src="${s}"><div class="pdel" onclick="rmChatImg(${i})">×</div></div>`).join('');document.getElementById('chat-img-preview').style.display=chatImgs.length?'block':'none';}
 function rmChatImg(i){chatImgs.splice(i,1);renderChatPgrid();}
-async function sendMsg(){const txt=document.getElementById('chat-inp').value.trim();if(!txt&&!chatImgs.length)return;const imgData=chatImgs.length?JSON.stringify(chatImgs):null;const{error}=await db.from('messages').insert([{sender_id:my.id,sender_name:my.name,recipient_id:chatUid,recipient_name:chatName,content:txt,image_url:imgData}]);if(error){alert('发送失败：'+error.message);return;}document.getElementById('chat-inp').value='';chatImgs=[];renderChatPgrid();await loadChatMsgs();}
+async function sendMsg(){const txt=document.getElementById('chat-inp').value.trim();if(!txt&&!chatImgs.length)return;let imgData=null;if(chatImgs.length){const urls=[];for(let i=0;i<chatImgs.length;i++){try{urls.push(await uploadToStorage(chatImgs[i],'chat'));}catch(err){alert('图片上传失败');return;}}imgData=JSON.stringify(urls);}const{error}=await db.from('messages').insert([{sender_id:my.id,sender_name:my.name,recipient_id:chatUid,recipient_name:chatName,content:txt,image_url:imgData}]);if(error){alert('发送失败：'+error.message);return;}document.getElementById('chat-inp').value='';chatImgs=[];renderChatPgrid();await loadChatMsgs();}
 
 // ── user profile view ─────────────────────────────────
 async function openUser(uid,uname){if(uid===my.id){switchNav('me');return;}viewingUid=uid;viewingName=uname;const panel=document.getElementById('v-user');document.getElementById('u-hdn').innerText=uname;document.getElementById('u-name').innerText='加载中…';document.getElementById('u-posts').innerHTML='<div class="empty">加载中…</div>';updateFBtn();panel.style.display='block';document.body.style.overflow='hidden';
@@ -1004,7 +1014,8 @@ function shareComment(cid){const u=`${location.origin}${location.pathname}?post=
 async function submitReply(){
   const val=document.getElementById('reply-inp').value.trim();
   if(!val&&!replyImgs.length)return;
-  const imgData=replyImgs.length?JSON.stringify(replyImgs):null;
+  let imgData=null;
+  if(replyImgs.length){const urls=[];for(let i=0;i<replyImgs.length;i++){try{urls.push(await uploadToStorage(replyImgs[i],'reply'));}catch(err){alert('图片上传失败');return;}}imgData=JSON.stringify(urls);}
   const row={post_id:curPId,author_id:my.id,author_name:my.name,content:val,likes:0,image_url:imgData};
   if(replyingTo){row.parent_id=replyingTo.id;row.reply_to_name=replyingTo.name;}
   const{error}=await db.from('comments').insert([row]);
@@ -1157,7 +1168,7 @@ async function sendBroadcast(){
   const{data:users}=await db.from('profiles').select('id');if(!users)return;
   const rows=users.filter(u=>u.id!==my.id).map(u=>({recipient_id:u.id,type:'system',sender_id:ADMIN_ID,sender_name:'📢 系统公告',message:msg}));
   if(rows.length)await db.from('notifications').insert(rows);
-  if(msg||adminMedia.broadcast.length){const iv=adminMedia.broadcast.length?JSON.stringify(adminMedia.broadcast):null;await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:'📢 【公告】'+msg,image_url:iv,likes:0}]);}
+  if(msg||adminMedia.broadcast.length){let iv=null;if(adminMedia.broadcast.length){const urls=[];for(let i=0;i<adminMedia.broadcast.length;i++){try{urls.push(await uploadToStorage(adminMedia.broadcast[i],'brd'));}catch(err){alert('上传失败');return;}}iv=JSON.stringify(urls);}await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:'📢 【公告】'+msg,image_url:iv,likes:0}]);}
   document.getElementById('admin-broadcast').value='';adminMedia.broadcast=[];renderAdminPgrid('broadcast');alert(`已向 ${rows.length} 位用户发送公告`);feedPage={};feedAllLoaded={};loadFeed('all');
 }
 let voteOptCount=0;
@@ -1175,7 +1186,7 @@ async function sendVote(){
 }
 async function sendQA(){
   const q=document.getElementById('qa-content').value.trim();if(!q&&!adminMedia.qa.length){alert('请输入问题');return;}
-  const iv=adminMedia.qa.length?JSON.stringify(adminMedia.qa):null;
+  let iv=null;if(adminMedia.qa.length){const urls=[];for(let i=0;i<adminMedia.qa.length;i++){try{urls.push(await uploadToStorage(adminMedia.qa[i],'qa'));}catch(err){alert('上传失败');return;}}iv=JSON.stringify(urls);}
   await db.from('posts').insert([{author_id:my.id,author_name:my.name,content:`❓ 【问答】${q}\n\n欢迎在评论区回答！`,image_url:iv,likes:0}]);
   document.getElementById('qa-content').value='';adminMedia.qa=[];renderAdminPgrid('qa');alert('问答已发布');feedPage={};feedAllLoaded={};loadFeed('all');
 }
