@@ -637,8 +637,9 @@ function shortLoc(region){if(!region)return'';const parts=region.split('·');ret
 
 function compressVideo(file){return new Promise((res,rej)=>{if(file.size>50*1024*1024){rej('视频文件不能超过50MB');return;}const url=URL.createObjectURL(file);const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{URL.revokeObjectURL(url);if(v.duration>300){rej('视频不能超过5分钟');return;}const reader=new FileReader();reader.onload=()=>res(reader.result);reader.onerror=()=>rej('视频读取失败');reader.readAsDataURL(file);};v.onerror=()=>{URL.revokeObjectURL(url);rej('无法读取视频');};v.src=url;});}
 async function processFile(file){if(file.type.startsWith('video/'))return compressVideo(file);return compress(file);}
+function dataURLtoBlob(d){const a=d.split(','),m=a[0].match(/:(.*?);/)[1],b=atob(a[1]),n=b.length,u=new Uint8Array(n);for(let i=0;i<n;i++)u[i]=b.charCodeAt(i);return new Blob([u],{type:m});}
 async function uploadToStorage(b64,prefix){
-  const resp=await fetch(b64);const blob=await resp.blob();
+  const blob=dataURLtoBlob(b64);
   const isVid=b64.startsWith('data:video/');
   const ext=isVid?'mp4':'jpg';
   const path=`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
